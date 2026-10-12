@@ -84,6 +84,8 @@ func (v *seedsView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
 		return true, push(newSeedShootsView(v.app, v.garden, r.data.(gardener.Seed).Name))
 	case "l":
 		return true, push(newMenuView(v.app, v.target(r.data.(gardener.Seed).Name)))
+	case "*":
+		return true, v.app.toggleFavorite(v.target(r.data.(gardener.Seed).Name))
 	}
 	return false, nil
 }

@@ -19,6 +19,7 @@ type shootsView struct {
 	garden  config.Garden
 	project *gardener.Project
 	seed    string
+	shoots  []gardener.Shoot
 }
 
 func newProjectShootsView(a *App, g config.Garden, p gardener.Project) *shootsView {
@@ -67,22 +68,30 @@ func (v *shootsView) update(msg tea.Msg) tea.Cmd {
 	if !ok || !v.finishLoad(m) {
 		return nil
 	}
-	shoots := m.data.([]gardener.Shoot)
-	rows := make([]row, 0, len(shoots))
-	for _, s := range shoots {
+	v.shoots = m.data.([]gardener.Shoot)
+	v.rebuild()
+	return nil
+}
+
+func (v *shootsView) rebuild() {
+	rows := make([]row, 0, len(v.shoots))
+	for _, s := range v.shoots {
 		second := s.Seed
 		if v.project == nil {
 			second = s.Project
 		}
+		name := s.Name
+		if v.app.state.IsFavorite(v.target(s)) {
+			name = "★ " + name
+		}
 		rows = append(rows, row{
 			key:    s.Namespace + "/" + s.Name,
-			cells:  []string{s.Name, second, s.Version, styles.StatusText(s.Status), s.LastOp.String(), s.Purpose},
+			cells:  []string{name, second, s.Version, styles.StatusText(s.Status), s.LastOp.String(), s.Purpose},
 			colors: []lipgloss.TerminalColor{nil, nil, nil, styles.StatusColor(s.Status)},
 			data:   s,
 		})
 	}
 	v.tbl.setRows(rows)
-	return nil
 }
 
 // target returns the launch target for a shoot of this view.
@@ -120,6 +129,10 @@ func (v *shootsView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
 		return true, push(newDetailView(v.app, v.garden, s, v.target(s)))
 	case "l":
 		return true, push(newMenuView(v.app, v.target(s)))
+	case "*":
+		cmd := v.app.toggleFavorite(v.target(s))
+		v.rebuild()
+		return true, cmd
 	}
 	return false, nil
 }

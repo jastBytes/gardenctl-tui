@@ -48,7 +48,7 @@ func waitFor(t *testing.T, tm *teatest.TestModel, s string) {
 		teatest.WithDuration(3*time.Second), teatest.WithCheckInterval(10*time.Millisecond))
 }
 
-func key(s string) tea.KeyMsg {
+func keyMsg(s string) tea.KeyMsg {
 	switch s {
 	case "enter":
 		return tea.KeyMsg{Type: tea.KeyEnter}
@@ -60,13 +60,15 @@ func key(s string) tea.KeyMsg {
 		return tea.KeyMsg{Type: tea.KeyTab}
 	case "backspace":
 		return tea.KeyMsg{Type: tea.KeyBackspace}
+	case "ctrl+r":
+		return tea.KeyMsg{Type: tea.KeyCtrlR}
 	}
 	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
 }
 
 func send(tm *teatest.TestModel, keys ...string) {
 	for _, k := range keys {
-		tm.Send(key(k))
+		tm.Send(keyMsg(k))
 	}
 }
 
@@ -241,7 +243,7 @@ func TestStaleLoadIsDropped(t *testing.T) {
 	a := New(testOptions(fake.Landscape()))
 	a.Update(pushMsg{newProjectsView(a, a.opts.Gardens[0])})
 	popped := a.top().id()
-	a.Update(key("esc"))
+	a.Update(keyMsg("esc"))
 	_, cmd := a.Update(loadedMsg{viewID: popped, err: errors.New("late")})
 	if cmd != nil || a.status != "" {
 		t.Fatalf("stale message should be ignored, status=%q", a.status)

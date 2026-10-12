@@ -13,6 +13,7 @@ import (
 
 	"github.com/jastbytes/gardenctl-tui/internal/config"
 	"github.com/jastbytes/gardenctl-tui/internal/session"
+	"github.com/jastbytes/gardenctl-tui/internal/state"
 	"github.com/jastbytes/gardenctl-tui/internal/ui/styles"
 )
 
@@ -56,6 +57,8 @@ type Options struct {
 	Exec ExecFunc
 	// Available reports whether a tool is installed (default launcher.Available).
 	Available func(config.Tool) bool
+	// State stores recent targets and favorites (default: in memory only).
+	State *state.Store
 }
 
 // App is the root model: navigation stack, status line and auto-refresh.
@@ -78,6 +81,9 @@ type App struct {
 	busy             string
 	providerEnv      bool
 	gardenctlVersion string
+
+	state    *state.Store
+	showHelp bool
 }
 
 // New creates the root model.
@@ -90,7 +96,12 @@ func New(opts Options) *App {
 	}
 	sp := spinner.New()
 	sp.Spinner = spinner.MiniDot
+	st := opts.State
+	if st == nil {
+		st, _ = state.Load("")
+	}
 	a := &App{
+		state:       st,
 		opts:        opts,
 		clients:     newClients(opts.Clients),
 		width:       100,
@@ -182,6 +193,10 @@ func (a *App) handleKey(msg tea.KeyMsg) tea.Cmd {
 	if msg.String() == "ctrl+c" {
 		return tea.Quit
 	}
+	if a.showHelp {
+		a.showHelp = false
+		return nil
+	}
 	top := a.top()
 	if top.capturing() {
 		_, cmd := top.key(msg)
@@ -190,6 +205,14 @@ func (a *App) handleKey(msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
 	case "q":
 		return tea.Quit
+	case "?":
+		a.showHelp = true
+		return nil
+	case "ctrl+r":
+		if _, ok := top.(*recentView); ok {
+			return nil
+		}
+		return push(newRecentView(a))
 	case "p":
 		a.providerEnv = !a.providerEnv
 		if a.providerEnv {
@@ -233,7 +256,12 @@ func (a *App) View() string {
 	header := a.breadcrumb(w)
 	status := a.statusLine(w)
 	bodyHeight := max(3, a.height-lipgloss.Height(header)-lipgloss.Height(status)-1)
-	body := a.top().render(w, bodyHeight)
+	var body string
+	if a.showHelp {
+		body = a.renderHelp(w, bodyHeight)
+	} else {
+		body = a.top().render(w, bodyHeight)
+	}
 	body = lipgloss.NewStyle().Height(bodyHeight).MaxHeight(bodyHeight).Render(body)
 	return styles.App.Render(lipgloss.JoinVertical(lipgloss.Left, header, body, status))
 }

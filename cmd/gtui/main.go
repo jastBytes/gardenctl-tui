@@ -8,12 +8,14 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/jastbytes/gardenctl-tui/internal/config"
 	"github.com/jastbytes/gardenctl-tui/internal/gardener"
 	"github.com/jastbytes/gardenctl-tui/internal/session"
+	"github.com/jastbytes/gardenctl-tui/internal/state"
 	"github.com/jastbytes/gardenctl-tui/internal/ui"
 )
 
@@ -92,6 +94,11 @@ func run(args []string) error {
 	restoreStderr := redirectStderr()
 	defer restoreStderr()
 
+	store, err := loadState(o.demo)
+	if err != nil {
+		return err
+	}
+
 	sessions := session.NewManager(gtuiCfg.Gardenctl)
 	defer func() {
 		if cerr := sessions.Cleanup(); cerr != nil {
@@ -104,12 +111,26 @@ func run(args []string) error {
 		Clients:  ui.ClientFactory(newClient),
 		Config:   gtuiCfg,
 		Sessions: sessions,
+		State:    store,
 	})
 	_, err = tea.NewProgram(app, tea.WithAltScreen(), tea.WithContext(ctx)).Run()
 	if errors.Is(err, tea.ErrProgramKilled) && ctx.Err() != nil {
 		return nil
 	}
 	return err
+}
+
+// loadState opens ~/.garden/gtui-state.yaml (recent targets and favorites).
+// Demo mode keeps its state in memory.
+func loadState(demo bool) (*state.Store, error) {
+	if demo {
+		return state.Load("")
+	}
+	dir, err := config.HomeDir()
+	if err != nil {
+		return nil, err
+	}
+	return state.Load(filepath.Join(dir, "gtui-state.yaml"))
 }
 
 // redirectStderr sends stderr output of libraries (klog, credential plugins)

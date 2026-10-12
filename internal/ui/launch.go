@@ -162,6 +162,20 @@ func (a *App) handleLaunchMsg(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
+// toggleFavorite toggles t as favorite and reports the result in the status line.
+func (a *App) toggleFavorite(t session.Target) tea.Cmd {
+	t.ControlPlane = false
+	on, err := a.state.ToggleFavorite(t)
+	switch {
+	case err != nil:
+		return setStatus("saving favorites failed: "+err.Error(), true)
+	case on:
+		return setStatus("★ "+t.String()+" added to favorites (ctrl+r)", false)
+	default:
+		return setStatus(t.String()+" removed from favorites", false)
+	}
+}
+
 func (a *App) startTool(req launchReq, sess *session.Session) tea.Cmd {
 	cmd, err := launcher.Command(req.tool, sess, launcher.Options{
 		ProviderEnv: a.providerEnv,
@@ -172,10 +186,14 @@ func (a *App) startTool(req launchReq, sess *session.Session) tea.Cmd {
 		return setStatus(err.Error(), true)
 	}
 	a.busy = fmt.Sprintf("running %s on %s", req.tool.Name, req.target)
+	var saveErr tea.Cmd
+	if err := a.state.AddRecent(req.target, req.tool.Name); err != nil {
+		saveErr = setStatus("saving recent targets failed: "+err.Error(), true)
+	}
 	banner := fmt.Sprintf("gtui: %s on %s – exit to return to gtui", req.tool.Name, req.target)
-	return a.exec(&launcher.Exec{Cmd: cmd, Banner: banner}, func(err error) tea.Msg {
+	return tea.Batch(saveErr, a.exec(&launcher.Exec{Cmd: cmd, Banner: banner}, func(err error) tea.Msg {
 		return toolExitedMsg{req: req, err: err}
-	})
+	}))
 }
 
 func (a *App) exec(c tea.ExecCommand, cb tea.ExecCallback) tea.Cmd {

@@ -72,6 +72,8 @@ func (v *detailView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
 	switch msg.String() {
 	case "enter", "l":
 		return true, push(newMenuView(v.app, v.target))
+	case "*":
+		return true, v.app.toggleFavorite(v.target)
 	case "up", "k", "down", "j", "pgup", "pgdown", "ctrl+u", "ctrl+d", "home", "end", "g", "G":
 		switch msg.String() {
 		case "g", "home":
