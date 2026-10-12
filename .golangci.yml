@@ -1,0 +1,27 @@
+version: "2"
+linters:
+  enable:
+    - errorlint
+    - gocritic
+    - misspell
+    - revive
+    - unconvert
+    - unparam
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+  exclusions:
+    presets:
+      - std-error-handling
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/jastbytes/gardenctl-tui
