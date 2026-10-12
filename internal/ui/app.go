@@ -73,6 +73,8 @@ type App struct {
 
 	status    string
 	statusErr bool
+	// statusFromLoad marks a load error, which the next successful load clears.
+	statusFromLoad bool
 
 	autoRefresh bool
 	tickGen     int
@@ -154,7 +156,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, tea.Batch(cmd, a.scheduleTick())
 
 	case statusMsg:
-		a.status, a.statusErr = msg.text, msg.err
+		a.status, a.statusErr, a.statusFromLoad = msg.text, msg.err, false
 		return a, nil
 
 	case sessionReadyMsg, targetedMsg, toolExitedMsg, versionMsg:
@@ -173,9 +175,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for _, v := range a.stack {
 			if v.id() == msg.viewID {
 				if msg.err != nil {
-					a.status, a.statusErr = msg.err.Error(), true
-				} else if a.statusErr {
-					a.status, a.statusErr = "", false
+					a.status, a.statusErr, a.statusFromLoad = msg.err.Error(), true, true
+				} else if a.statusFromLoad {
+					a.status, a.statusErr, a.statusFromLoad = "", false, false
 				}
 				return a, v.update(msg)
 			}
