@@ -138,8 +138,8 @@ from the gardenctl configuration. Targeting is left to gardenctl:
 1. A new session ID (UUID) is created and used as `GCTL_SESSION_ID`.
 2. `gardenctl target --garden G --project P --shoot S [--control-plane]` runs
    with that session ID (`--seed` instead of `--project` when you came through
-   the seeds view). If gardenctl asks for a confirmation (access
-   restrictions), it is run again in the terminal so that you can answer.
+   the seeds view). It runs in the terminal, so you can answer an
+   access-restriction confirmation or follow a login prompt.
 3. `gardenctl kubectl-env bash` returns `export KUBECONFIG='…';`, which gtui
    parses (gardenctl has no machine-readable output for this).
 4. With provider-env on, the tool is started through

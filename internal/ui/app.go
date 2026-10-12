@@ -78,9 +78,8 @@ type App struct {
 	tickGen     int
 
 	// busy is set while a tool is being prepared or running.
-	busy             string
-	providerEnv      bool
-	gardenctlVersion string
+	busy        string
+	providerEnv bool
 
 	state    *state.Store
 	showHelp bool
@@ -158,7 +157,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.status, a.statusErr = msg.text, msg.err
 		return a, nil
 
-	case sessionReadyMsg, targetConfirmedMsg, toolExitedMsg, versionMsg:
+	case sessionReadyMsg, targetedMsg, toolExitedMsg, versionMsg:
 		return a, a.handleLaunchMsg(msg)
 
 	case popMsg:

@@ -15,7 +15,6 @@ type menuItem struct {
 	tool         config.Tool
 	controlPlane bool
 	key          string
-	available    bool
 }
 
 // menuView lets the user pick a tool to launch against a target.
@@ -32,9 +31,9 @@ func newMenuView(a *App, t session.Target) *menuView {
 	var rows []row
 	for _, tool := range a.opts.Config.Tools {
 		avail := a.available(tool)
-		variants := []menuItem{{tool: tool, key: tool.Key, available: avail}}
+		variants := []menuItem{{tool: tool, key: tool.Key}}
 		if t.Shoot != "" && tool.ControlPlaneKey != "" {
-			variants = append(variants, menuItem{tool: tool, key: tool.ControlPlaneKey, controlPlane: true, available: avail})
+			variants = append(variants, menuItem{tool: tool, key: tool.ControlPlaneKey, controlPlane: true})
 		}
 		for _, it := range variants {
 			where := "shoot"

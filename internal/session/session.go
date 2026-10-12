@@ -27,11 +27,6 @@ const (
 // (session directories under $TMPDIR/garden/sessions were introduced in v2.10.0).
 const MinGardenctlVersion = "v2.10.0"
 
-// ErrConfirmationRequired is returned when `gardenctl target` asks for a
-// confirmation (access restrictions). The caller must run the target command
-// interactively (see Manager.TargetCommand).
-var ErrConfirmationRequired = errors.New("gardenctl requires confirmation")
-
 var sidRegexp = regexp.MustCompile(`^[\w-]{1,128}$`)
 
 // Runner executes gardenctl. It is an interface so that tests can mock gardenctl.
@@ -121,21 +116,9 @@ func (m *Manager) New(t Target) *Session {
 	return &Session{ID: id, Target: t, Env: env}
 }
 
-// Target runs `gardenctl target` non-interactively for the session.
-// It returns ErrConfirmationRequired if gardenctl asks for confirmation.
-func (m *Manager) Target(ctx context.Context, s *Session) error {
-	stdout, stderr, err := m.Runner.Run(ctx, s.Env, s.Target.TargetArgs()...)
-	if strings.Contains(stdout, "Do you want to continue?") {
-		return ErrConfirmationRequired
-	}
-	if err != nil {
-		return gardenctlError("target", stderr, err)
-	}
-	return nil
-}
-
-// TargetCommand returns `gardenctl target` as an interactive command, for
-// targets that require a confirmation.
+// TargetCommand returns `gardenctl target` for the session. It must run in the
+// terminal: gardenctl may ask for confirmation (access restrictions) and login
+// plugins may print a URL or prompt.
 func (m *Manager) TargetCommand(s *Session) *exec.Cmd {
 	return m.Runner.Command(s.Env, s.Target.TargetArgs()...)
 }
@@ -144,7 +127,7 @@ func (m *Manager) TargetCommand(s *Session) *exec.Cmd {
 func (m *Manager) Env(ctx context.Context, s *Session) error {
 	stdout, stderr, err := m.Runner.Run(ctx, s.Env, "kubectl-env", "bash")
 	if err != nil {
-		return gardenctlError("kubectl-env", stderr, err)
+		return GardenctlError("kubectl-env", stderr, err)
 	}
 	kc, err := ParseKubeconfigExport(stdout)
 	if err != nil {
@@ -155,15 +138,6 @@ func (m *Manager) Env(ctx context.Context, s *Session) error {
 	return nil
 }
 
-// Prepare targets and resolves the environment in one go.
-func (m *Manager) Prepare(ctx context.Context, t Target) (*Session, error) {
-	s := m.New(t)
-	if err := m.Target(ctx, s); err != nil {
-		return s, err
-	}
-	return s, m.Env(ctx, s)
-}
-
 // Version returns the gardenctl version (e.g. "v2.16.0").
 func (m *Manager) Version(ctx context.Context) (string, error) {
 	stdout, stderr, err := m.Runner.Run(ctx, os.Environ(), "version", "-o", "json")
@@ -172,7 +146,7 @@ func (m *Manager) Version(ctx context.Context) (string, error) {
 		if errors.As(err, &execErr) || errors.Is(err, fs.ErrNotExist) {
 			return "", fmt.Errorf("gardenctl not found: %w", err)
 		}
-		return "", gardenctlError("version", stderr, err)
+		return "", GardenctlError("version", stderr, err)
 	}
 	var info struct {
 		GitVersion string `json:"gitVersion"`
@@ -212,7 +186,9 @@ func (m *Manager) Cleanup() error {
 	return errors.Join(errs...)
 }
 
-func gardenctlError(cmd, stderr string, err error) error {
+// GardenctlError turns a failed gardenctl call into an error carrying the
+// last line of its stderr (where gardenctl prints "Error: ...").
+func GardenctlError(cmd, stderr string, err error) error {
 	msg := strings.TrimSpace(stderr)
 	if i := strings.LastIndex(msg, "\n"); i >= 0 {
 		msg = strings.TrimSpace(msg[i+1:]) // the last line carries the actual error

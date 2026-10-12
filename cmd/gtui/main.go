@@ -73,10 +73,9 @@ func run(args []string) error {
 		return err
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
-
 	if o.dump {
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer cancel()
 		return dump(ctx, os.Stdout, gardens, newClient)
 	}
 
@@ -113,10 +112,9 @@ func run(args []string) error {
 		Sessions: sessions,
 		State:    store,
 	})
-	_, err = tea.NewProgram(app, tea.WithAltScreen(), tea.WithContext(ctx)).Run()
-	if errors.Is(err, tea.ErrProgramKilled) && ctx.Err() != nil {
-		return nil
-	}
+	// No signal context here: a Ctrl+C inside a launched tool must not quit gtui.
+	// Bubble Tea handles signals itself and ignores them while a tool runs.
+	_, err = tea.NewProgram(app, tea.WithAltScreen()).Run()
 	return err
 }
 

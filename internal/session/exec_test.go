@@ -20,11 +20,11 @@ func TestExecRunnerWithFakeGardenctl(t *testing.T) {
 		t.Fatalf("version %q, %v", v, err)
 	}
 
-	s1, err := m.Prepare(ctx, Target{Garden: "g", Project: "p", Shoot: "a"})
+	s1, err := prepare(m, Target{Garden: "g", Project: "p", Shoot: "a"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	s2, err := m.Prepare(ctx, Target{Garden: "g", Project: "p", Shoot: "b", ControlPlane: true})
+	s2, err := prepare(m, Target{Garden: "g", Project: "p", Shoot: "b", ControlPlane: true})
 	if err != nil {
 		t.Fatal(err)
 	}

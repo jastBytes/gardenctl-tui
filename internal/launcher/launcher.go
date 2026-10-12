@@ -96,6 +96,8 @@ func Command(tool config.Tool, s *session.Session, o Options) (*exec.Cmd, error)
 type Exec struct {
 	Cmd    *exec.Cmd
 	Banner string
+	// Stderr, if set, additionally receives a copy of the command's stderr.
+	Stderr io.Writer
 }
 
 func (e *Exec) SetStdin(r io.Reader) {
@@ -110,13 +112,18 @@ func (e *Exec) SetStdout(w io.Writer) {
 	}
 }
 
-func (e *Exec) SetStderr(w io.Writer) {
-	if e.Cmd.Stderr == nil {
-		e.Cmd.Stderr = w
-	}
-}
+// SetStderr ignores w: Bubble Tea passes os.Stderr, which gtui redirects to a
+// log file while the UI runs. Run uses the terminal (stdout) instead, so shells
+// stay interactive and error messages stay visible.
+func (e *Exec) SetStderr(io.Writer) {}
 
 func (e *Exec) Run() error {
+	if e.Cmd.Stderr == nil {
+		e.Cmd.Stderr = e.Cmd.Stdout
+		if e.Stderr != nil {
+			e.Cmd.Stderr = io.MultiWriter(e.Cmd.Stdout, e.Stderr)
+		}
+	}
 	if e.Banner != "" && e.Cmd.Stdout != nil {
 		fmt.Fprintln(e.Cmd.Stdout, e.Banner)
 	}

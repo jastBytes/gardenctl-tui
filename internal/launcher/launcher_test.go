@@ -3,6 +3,7 @@ package launcher
 import (
 	"bytes"
 	"errors"
+	"os"
 	"os/exec"
 	"reflect"
 	"strings"
@@ -99,5 +100,25 @@ func TestProviderEnvScriptRuns(t *testing.T) {
 	cmd.Stdout, cmd.Stderr = &out, &out
 	if err := cmd.Run(); err == nil || strings.Contains(out.String(), "started") {
 		t.Fatalf("tool started despite provider-env failure: %v %q", err, out.String())
+	}
+}
+
+// Bubble Tea passes os.Stderr (redirected to a log file by gtui); the tool must
+// write its stderr to the terminal instead so shells stay interactive.
+func TestExecSendsStderrToTerminal(t *testing.T) {
+	term, err := os.CreateTemp(t.TempDir(), "tty") // like the real terminal, an *os.File
+	if err != nil {
+		t.Fatal(err)
+	}
+	var logFile, captured bytes.Buffer
+	e := &Exec{Cmd: exec.Command("sh", "-c", "echo out; echo err >&2"), Stderr: &captured}
+	e.SetStdout(term)
+	e.SetStderr(&logFile)
+	if err := e.Run(); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(term.Name())
+	if string(got) != "out\nerr\n" || logFile.Len() != 0 || captured.String() != "err\n" {
+		t.Fatalf("terminal %q, log %q, captured %q", got, logFile.String(), captured.String())
 	}
 }

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,17 +34,25 @@ func (r *execRecorder) exec(c tea.ExecCommand, cb tea.ExecCallback) tea.Cmd {
 			in, r.stdin = r.stdin[0], r.stdin[1:]
 		}
 		r.runs++
-		var out bytes.Buffer
 		r.mu.Unlock()
+		out := &lockedWriter{w: &r.output, mu: &r.mu}
 		c.SetStdin(strings.NewReader(in))
-		c.SetStdout(&out)
-		c.SetStderr(&out)
-		err := c.Run()
-		r.mu.Lock()
-		r.output.Write(out.Bytes())
-		r.mu.Unlock()
-		return cb(err)
+		c.SetStdout(out)
+		c.SetStderr(out)
+		return cb(c.Run())
 	}
+}
+
+// lockedWriter makes concurrent stdout/stderr copies safe in tests.
+type lockedWriter struct {
+	w  io.Writer
+	mu *sync.Mutex
+}
+
+func (l *lockedWriter) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.w.Write(p)
 }
 
 func (r *execRecorder) String() string {
@@ -125,7 +134,8 @@ func TestLaunchToolFromShootTable(t *testing.T) {
 	if strings.TrimSpace(string(target)) != "--garden dev --project alpha --shoot api-gw" {
 		t.Fatalf("gardenctl target args: %q", target)
 	}
-	if !strings.Contains(e.rec.String(), "gtui: envdump on dev/alpha/api-gw") {
+	if !strings.Contains(e.rec.String(), "gtui: targeting dev/alpha/api-gw") ||
+		!strings.Contains(e.rec.String(), "gtui: envdump on dev/alpha/api-gw") {
 		t.Fatalf("banner missing: %q", e.rec.String())
 	}
 	// The parent environment is untouched.
@@ -226,7 +236,7 @@ func TestLaunchTargetError(t *testing.T) {
 	send(tm, "x")
 	waitFor(t, tm, "gardenctl target: shoot is hibernated")
 	_ = tm.Quit()
-	if e.rec.runs != 0 {
+	if _, err := os.Stat(e.out); err == nil {
 		t.Fatal("tool must not start after a failed target")
 	}
 }
@@ -241,7 +251,7 @@ func TestLaunchWithConfirmation(t *testing.T) {
 	waitFor(t, tm, "back from envdump")
 	_ = tm.Quit()
 	if e.rec.runs != 2 {
-		t.Fatalf("expected interactive target + tool, got %d runs", e.rec.runs)
+		t.Fatalf("expected target + tool, got %d runs", e.rec.runs)
 	}
 	if !strings.Contains(e.rec.String(), "Do you want to continue?") {
 		t.Fatalf("confirmation prompt not shown: %q", e.rec.String())
@@ -256,7 +266,7 @@ func TestLaunchConfirmationDeclined(t *testing.T) {
 	tm := startApp(t, e.opts)
 	openShoots(t, tm)
 	send(tm, "x")
-	waitFor(t, tm, "targeting aborted")
+	waitFor(t, tm, "gardenctl target: operation aborted")
 	_ = tm.Quit()
 	if _, err := os.Stat(e.out); err == nil {
 		t.Fatal("tool ran although targeting was declined")

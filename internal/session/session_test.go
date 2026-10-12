@@ -87,9 +87,17 @@ func (m *mockRunner) Run(_ context.Context, env []string, args ...string) (strin
 }
 
 func (m *mockRunner) Command(env []string, args ...string) *exec.Cmd {
-	c := exec.Command("gardenctl", args...)
-	c.Env = env
-	return c
+	m.calls = append(m.calls, call{env, args})
+	return exec.Command("true")
+}
+
+// prepare runs what the UI runs: target (in the terminal) and kubectl-env.
+func prepare(m *Manager, t Target) (*Session, error) {
+	s := m.New(t)
+	if err := m.TargetCommand(s).Run(); err != nil {
+		return s, err
+	}
+	return s, m.Env(context.Background(), s)
 }
 
 func envValue(env []string, key string) []string {
@@ -119,7 +127,7 @@ func TestPrepare(t *testing.T) {
 		BaseEnv: []string{"PATH=/bin", "GCTL_SESSION_ID=parent", "KUBECONFIG=/parent", "TERM_SESSION_ID=x"},
 		NewID:   func() string { return "sid-1" },
 	}
-	s, err := m.Prepare(context.Background(), Target{Garden: "g", Project: "p", Shoot: "s"})
+	s, err := prepare(m, Target{Garden: "g", Project: "p", Shoot: "s"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,37 +164,31 @@ func TestPrepare(t *testing.T) {
 
 func TestPrepareErrors(t *testing.T) {
 	r := newMock()
-	r.results["target"] = struct {
-		stdout, stderr string
-		err            error
-	}{stderr: "I1012 some log\nError: shoot \"s\" not found\n", err: errors.New("exit status 1")}
-	m := &Manager{Runner: r, BaseEnv: []string{}}
-	_, err := m.Prepare(context.Background(), Target{Garden: "g", Project: "p", Shoot: "s"})
-	if err == nil || err.Error() != `gardenctl target: shoot "s" not found` {
-		t.Fatalf("err = %v", err)
-	}
-
-	r = newMock()
-	r.results["target"] = struct {
-		stdout, stderr string
-		err            error
-	}{stdout: "┌─ Access Restriction ─┐\nDo you want to continue? [y/N]: ", err: errors.New("exit status 1")}
-	m = &Manager{Runner: r, BaseEnv: []string{}}
-	if _, err = m.Prepare(context.Background(), Target{Garden: "g", Project: "p", Shoot: "s"}); !errors.Is(err, ErrConfirmationRequired) {
-		t.Fatalf("err = %v, want ErrConfirmationRequired", err)
-	}
-	if len(r.calls) != 1 {
-		t.Fatal("kubectl-env must not run after a failed target")
-	}
-
-	r = newMock()
 	r.results["kubectl-env"] = struct {
 		stdout, stderr string
 		err            error
 	}{stdout: "garbage"}
-	m = &Manager{Runner: r, BaseEnv: []string{}}
-	if _, err = m.Prepare(context.Background(), Target{Garden: "g"}); err == nil {
+	m := &Manager{Runner: r, BaseEnv: []string{}}
+	if _, err := prepare(m, Target{Garden: "g"}); err == nil {
 		t.Fatal("expected parse error")
+	}
+
+	r.results["kubectl-env"] = struct {
+		stdout, stderr string
+		err            error
+	}{stderr: "I1012 some log\nError: no target\n", err: errors.New("exit status 1")}
+	if _, err := prepare(m, Target{Garden: "g"}); err == nil || err.Error() != "gardenctl kubectl-env: no target" {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestGardenctlError(t *testing.T) {
+	err := GardenctlError("target", "I1012 log line\nError: shoot \"s\" not found\n", errors.New("exit status 1"))
+	if err.Error() != `gardenctl target: shoot "s" not found` {
+		t.Fatal(err)
+	}
+	if err := GardenctlError("target", "", errors.New("exit status 1")); err.Error() != "gardenctl target: exit status 1" {
+		t.Fatal(err)
 	}
 }
 

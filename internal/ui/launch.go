@@ -2,8 +2,8 @@ package ui
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -13,9 +13,8 @@ import (
 	"github.com/jastbytes/gardenctl-tui/internal/session"
 )
 
-// prepareTimeout bounds `gardenctl target` + `kubectl-env`; a browser-based
-// login (OIDC) may happen in between.
-const prepareTimeout = 3 * time.Minute
+// envTimeout bounds `gardenctl kubectl-env` (targeting already happened in the terminal).
+const envTimeout = time.Minute
 
 // ExecFunc hands the terminal to a command (tea.Exec; replaced in tests).
 type ExecFunc func(tea.ExecCommand, tea.ExecCallback) tea.Cmd
@@ -32,11 +31,12 @@ type sessionReadyMsg struct {
 	err  error
 }
 
-// targetConfirmedMsg reports the result of an interactive `gardenctl target`.
-type targetConfirmedMsg struct {
-	req  launchReq
-	sess *session.Session
-	err  error
+// targetedMsg reports the result of `gardenctl target` run in the terminal.
+type targetedMsg struct {
+	req    launchReq
+	sess   *session.Session
+	err    error
+	stderr string
 }
 
 // toolExitedMsg is sent when a launched tool returns.
@@ -97,48 +97,42 @@ func (a *App) launch(tool config.Tool, t session.Target) tea.Cmd {
 		return setStatus(fmt.Sprintf("%s: %s not found in PATH", tool.Name, tool.Command[0]), true)
 	}
 	req := launchReq{tool: tool, target: t}
-	a.busy = fmt.Sprintf("preparing %s for %s (gardenctl target)…", tool.Name, t)
+	a.busy = fmt.Sprintf("targeting %s…", t)
 	a.status = ""
-	mgr := a.opts.Sessions
-	sess := mgr.New(t)
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), prepareTimeout)
-		defer cancel()
-		err := mgr.Target(ctx, sess)
-		if err == nil {
-			err = mgr.Env(ctx, sess)
-		}
-		return sessionReadyMsg{req: req, sess: sess, err: err}
+	sess := a.opts.Sessions.New(t)
+	// Run in the terminal: gardenctl may ask for confirmation and login plugins
+	// may print a URL. Keep a copy of stderr for the status line.
+	var stderr strings.Builder
+	e := &launcher.Exec{
+		Cmd:    a.opts.Sessions.TargetCommand(sess),
+		Banner: fmt.Sprintf("gtui: targeting %s", t),
+		Stderr: &stderr,
 	}
+	return a.exec(e, func(err error) tea.Msg {
+		return targetedMsg{req: req, sess: sess, err: err, stderr: stderr.String()}
+	})
 }
 
 func (a *App) handleLaunchMsg(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
-	case sessionReadyMsg:
-		if errors.Is(msg.err, session.ErrConfirmationRequired) {
-			cmd := a.opts.Sessions.TargetCommand(msg.sess)
-			banner := fmt.Sprintf("gtui: gardenctl asks for confirmation to target %s", msg.req.target)
-			return a.exec(&launcher.Exec{Cmd: cmd, Banner: banner}, func(err error) tea.Msg {
-				return targetConfirmedMsg{req: msg.req, sess: msg.sess, err: err}
-			})
+	case targetedMsg:
+		if msg.err != nil {
+			a.busy = ""
+			return setStatus(session.GardenctlError("target", msg.stderr, msg.err).Error(), true)
 		}
+		mgr := a.opts.Sessions
+		return func() tea.Msg {
+			ctx, cancel := context.WithTimeout(context.Background(), envTimeout)
+			defer cancel()
+			return sessionReadyMsg{req: msg.req, sess: msg.sess, err: mgr.Env(ctx, msg.sess)}
+		}
+
+	case sessionReadyMsg:
 		if msg.err != nil {
 			a.busy = ""
 			return setStatus(msg.err.Error(), true)
 		}
 		return a.startTool(msg.req, msg.sess)
-
-	case targetConfirmedMsg:
-		if msg.err != nil {
-			a.busy = ""
-			return setStatus("targeting aborted: "+msg.err.Error(), true)
-		}
-		mgr := a.opts.Sessions
-		return func() tea.Msg {
-			ctx, cancel := context.WithTimeout(context.Background(), prepareTimeout)
-			defer cancel()
-			return sessionReadyMsg{req: msg.req, sess: msg.sess, err: mgr.Env(ctx, msg.sess)}
-		}
 
 	case toolExitedMsg:
 		a.busy = ""
@@ -157,7 +151,6 @@ func (a *App) handleLaunchMsg(msg tea.Msg) tea.Cmd {
 		case session.CompareVersions(msg.version, session.MinGardenctlVersion) < 0:
 			return setStatus(fmt.Sprintf("gardenctl %s is older than %s – please upgrade", msg.version, session.MinGardenctlVersion), true)
 		}
-		a.gardenctlVersion = msg.version
 	}
 	return nil
 }
