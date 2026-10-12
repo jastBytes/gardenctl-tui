@@ -8,6 +8,7 @@ import (
 
 	"github.com/jastbytes/gardenctl-tui/internal/config"
 	"github.com/jastbytes/gardenctl-tui/internal/gardener"
+	"github.com/jastbytes/gardenctl-tui/internal/session"
 	"github.com/jastbytes/gardenctl-tui/internal/ui/styles"
 )
 
@@ -57,9 +58,20 @@ func (v *seedsView) update(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
-func (v *seedsView) hints() []hint { return baseHints() }
+func (v *seedsView) hints() []hint {
+	return append(toolHints(v.app), hint{"l", "launch…"}, hint{"enter", "shoots"}, hint{"/", "filter"}, hint{"esc", "back"})
+}
+
+func (v *seedsView) target(name string) session.Target {
+	return session.Target{Garden: v.garden.Name, Seed: name}
+}
 
 func (v *seedsView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
+	if r, ok := v.tbl.selected(); ok && !v.tbl.filtering() {
+		if handled, cmd := v.app.launchKey(msg.String(), v.target(r.data.(gardener.Seed).Name)); handled {
+			return true, cmd
+		}
+	}
 	if handled, cmd := v.tableKey(msg); handled {
 		return true, cmd
 	}
@@ -70,6 +82,8 @@ func (v *seedsView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
 	switch msg.String() {
 	case "enter", "right":
 		return true, push(newSeedShootsView(v.app, v.garden, r.data.(gardener.Seed).Name))
+	case "l":
+		return true, push(newMenuView(v.app, v.target(r.data.(gardener.Seed).Name)))
 	}
 	return false, nil
 }

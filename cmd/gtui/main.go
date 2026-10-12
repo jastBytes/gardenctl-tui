@@ -13,6 +13,7 @@ import (
 
 	"github.com/jastbytes/gardenctl-tui/internal/config"
 	"github.com/jastbytes/gardenctl-tui/internal/gardener"
+	"github.com/jastbytes/gardenctl-tui/internal/session"
 	"github.com/jastbytes/gardenctl-tui/internal/ui"
 )
 
@@ -91,7 +92,19 @@ func run(args []string) error {
 	restoreStderr := redirectStderr()
 	defer restoreStderr()
 
-	app := ui.New(ui.Options{Gardens: gardens, Clients: ui.ClientFactory(newClient), Config: gtuiCfg})
+	sessions := session.NewManager(gtuiCfg.Gardenctl)
+	defer func() {
+		if cerr := sessions.Cleanup(); cerr != nil {
+			fmt.Fprintln(os.Stderr, "gtui: cleanup of gardenctl sessions failed:", cerr)
+		}
+	}()
+
+	app := ui.New(ui.Options{
+		Gardens:  gardens,
+		Clients:  ui.ClientFactory(newClient),
+		Config:   gtuiCfg,
+		Sessions: sessions,
+	})
 	_, err = tea.NewProgram(app, tea.WithAltScreen(), tea.WithContext(ctx)).Run()
 	if errors.Is(err, tea.ErrProgramKilled) && ctx.Err() != nil {
 		return nil

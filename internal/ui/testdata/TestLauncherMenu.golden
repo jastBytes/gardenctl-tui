@@ -1,0 +1,17 @@
+ gtui  gardens › dev › alpha › launch                                              auto-refresh off 
+ Launch a tool on dev/alpha/api-gw                                                                  
+                                                                                                    
+   KEY  TOOL     TARGET         COMMAND                                                             
+ ▸ x    envdump  shoot          sh -c echo "sid=$GCTL_SESSION_ID kc=$KUBECONFIG t…                  
+   X    envdump  control plane  sh -c echo "sid=$GCTL_SESSION_ID kc=$KUBECONFIG t…                  
+   f    sofka    shoot          not found in PATH                                                   
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+ enter launch · p provider-env · esc back · ? help · q quit                                         

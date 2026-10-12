@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/jastbytes/gardenctl-tui/internal/config"
+	"github.com/jastbytes/gardenctl-tui/internal/session"
 	"github.com/jastbytes/gardenctl-tui/internal/ui/styles"
 )
 
@@ -49,6 +50,12 @@ type Options struct {
 	Config  *config.GTUI
 	// Now is used for relative times (tests inject a fixed clock).
 	Now func() time.Time
+	// Sessions prepares gardenctl sessions for launched tools (nil disables launching).
+	Sessions *session.Manager
+	// Exec hands the terminal to a command (default tea.Exec).
+	Exec ExecFunc
+	// Available reports whether a tool is installed (default launcher.Available).
+	Available func(config.Tool) bool
 }
 
 // App is the root model: navigation stack, status line and auto-refresh.
@@ -66,6 +73,11 @@ type App struct {
 
 	autoRefresh bool
 	tickGen     int
+
+	// busy is set while a tool is being prepared or running.
+	busy             string
+	providerEnv      bool
+	gardenctlVersion string
 }
 
 // New creates the root model.
@@ -85,6 +97,7 @@ func New(opts Options) *App {
 		height:      30,
 		spinner:     sp,
 		autoRefresh: opts.Config.RefreshInterval.Duration > 0,
+		providerEnv: opts.Config.ProviderEnv,
 	}
 	a.stack = []view{newGardensView(a)}
 	return a
@@ -98,7 +111,7 @@ func (a *App) newID() int {
 func (a *App) top() view { return a.stack[len(a.stack)-1] }
 
 func (a *App) Init() tea.Cmd {
-	return tea.Batch(a.top().init(), a.spinner.Tick, a.scheduleTick())
+	return tea.Batch(a.top().init(), a.spinner.Tick, a.scheduleTick(), a.checkVersion())
 }
 
 func (a *App) scheduleTick() tea.Cmd {
@@ -125,13 +138,20 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, nil
 		}
 		var cmd tea.Cmd
-		if !a.top().capturing() && !a.top().isLoading() {
+		if !a.top().capturing() && !a.top().isLoading() && a.busy == "" {
 			cmd = a.top().refresh()
 		}
 		return a, tea.Batch(cmd, a.scheduleTick())
 
 	case statusMsg:
 		a.status, a.statusErr = msg.text, msg.err
+		return a, nil
+
+	case sessionReadyMsg, targetConfirmedMsg, toolExitedMsg, versionMsg:
+		return a, a.handleLaunchMsg(msg)
+
+	case popMsg:
+		a.popView()
 		return a, nil
 
 	case pushMsg:
@@ -170,6 +190,12 @@ func (a *App) handleKey(msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
 	case "q":
 		return tea.Quit
+	case "p":
+		a.providerEnv = !a.providerEnv
+		if a.providerEnv {
+			return setStatus("provider-env on: launched tools get cloud provider credentials", false)
+		}
+		return setStatus("provider-env off", false)
 	case "r":
 		a.status = ""
 		return top.refresh()
@@ -190,12 +216,16 @@ func (a *App) handleKey(msg tea.KeyMsg) tea.Cmd {
 	}
 	switch msg.String() {
 	case "esc", "h", "left", "backspace":
-		if len(a.stack) > 1 {
-			a.stack = a.stack[:len(a.stack)-1]
-			a.status = ""
-		}
+		a.popView()
 	}
 	return nil
+}
+
+func (a *App) popView() {
+	if len(a.stack) > 1 {
+		a.stack = a.stack[:len(a.stack)-1]
+		a.status = ""
+	}
 }
 
 func (a *App) View() string {
@@ -222,6 +252,9 @@ func (a *App) breadcrumb(width int) string {
 	if a.autoRefresh {
 		right = styles.Dim.Render("⟳ " + a.opts.Config.RefreshInterval.String())
 	}
+	if a.providerEnv {
+		right = styles.Info.Render("provider-env") + "  " + right
+	}
 	gap := width - lipgloss.Width(left) - lipgloss.Width(right)
 	if gap < 1 {
 		return ansi.Truncate(left, width, "…")
@@ -233,6 +266,8 @@ func (a *App) statusLine(width int) string {
 	top := a.top()
 	var left string
 	switch {
+	case a.busy != "":
+		left = a.spinner.View() + " " + a.busy
 	case top.isLoading():
 		left = a.spinner.View() + " loading…"
 	case a.status != "" && a.statusErr:

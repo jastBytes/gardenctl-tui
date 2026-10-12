@@ -66,7 +66,12 @@ func (v *detailView) update(msg tea.Msg) tea.Cmd {
 }
 
 func (v *detailView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
+	if handled, cmd := v.app.launchKey(msg.String(), v.target); handled {
+		return true, cmd
+	}
 	switch msg.String() {
+	case "enter", "l":
+		return true, push(newMenuView(v.app, v.target))
 	case "up", "k", "down", "j", "pgup", "pgdown", "ctrl+u", "ctrl+d", "home", "end", "g", "G":
 		switch msg.String() {
 		case "g", "home":

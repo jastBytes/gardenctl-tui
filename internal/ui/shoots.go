@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -95,9 +96,17 @@ func (v *shootsView) target(s gardener.Shoot) session.Target {
 	return t
 }
 
-func (v *shootsView) hints() []hint { return baseHints() }
+func (v *shootsView) hints() []hint {
+	return append(toolHints(v.app), hint{"l", "launch…"}, hint{"enter", "details"}, hint{"/", "filter"}, hint{"esc", "back"})
+}
 
 func (v *shootsView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
+	// Tool shortcuts take precedence over vim-style navigation (e.g. k = k9s).
+	if r, ok := v.tbl.selected(); ok && !v.tbl.filtering() {
+		if handled, cmd := v.app.launchKey(msg.String(), v.target(r.data.(gardener.Shoot))); handled {
+			return true, cmd
+		}
+	}
 	if handled, cmd := v.tableKey(msg); handled {
 		return true, cmd
 	}
@@ -109,8 +118,22 @@ func (v *shootsView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
 	switch msg.String() {
 	case "enter", "right":
 		return true, push(newDetailView(v.app, v.garden, s, v.target(s)))
+	case "l":
+		return true, push(newMenuView(v.app, v.target(s)))
 	}
 	return false, nil
+}
+
+// toolHints lists the tool shortcuts, e.g. "s/k/c/f tools".
+func toolHints(a *App) []hint {
+	var keys []string
+	for _, t := range a.opts.Config.Tools {
+		keys = append(keys, t.Key)
+	}
+	if len(keys) == 0 {
+		return nil
+	}
+	return []hint{{strings.Join(keys, "/"), "tools"}}
 }
 
 func (v *shootsView) render(width, height int) string { return v.renderTable(width, height) }
