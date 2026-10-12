@@ -13,6 +13,7 @@ import (
 
 	"github.com/jastbytes/gardenctl-tui/internal/config"
 	"github.com/jastbytes/gardenctl-tui/internal/gardener"
+	"github.com/jastbytes/gardenctl-tui/internal/ui"
 )
 
 var version = "dev"
@@ -76,8 +77,47 @@ func run(args []string) error {
 		return dump(ctx, os.Stdout, gardens, newClient)
 	}
 
-	_, err = tea.NewProgram(model{}, tea.WithAltScreen()).Run()
+	gtuiPath := o.gtuiConfig
+	if gtuiPath == "" {
+		if gtuiPath, err = config.GTUIPath(); err != nil {
+			return err
+		}
+	}
+	gtuiCfg, err := config.LoadGTUI(gtuiPath)
+	if err != nil {
+		return err
+	}
+
+	restoreStderr := redirectStderr()
+	defer restoreStderr()
+
+	app := ui.New(ui.Options{Gardens: gardens, Clients: ui.ClientFactory(newClient), Config: gtuiCfg})
+	_, err = tea.NewProgram(app, tea.WithAltScreen(), tea.WithContext(ctx)).Run()
+	if errors.Is(err, tea.ErrProgramKilled) && ctx.Err() != nil {
+		return nil
+	}
 	return err
+}
+
+// redirectStderr sends stderr output of libraries (klog, credential plugins)
+// to a log file while the full-screen UI owns the terminal.
+func redirectStderr() func() {
+	f, err := os.CreateTemp("", "gtui-*.log")
+	if err != nil {
+		return func() {}
+	}
+	orig := os.Stderr
+	os.Stderr = f
+	return func() {
+		os.Stderr = orig
+		info, statErr := f.Stat()
+		_ = f.Close()
+		if statErr == nil && info.Size() == 0 {
+			_ = os.Remove(f.Name())
+		} else {
+			fmt.Fprintf(orig, "gtui: diagnostic output was written to %s\n", f.Name())
+		}
+	}
 }
 
 func loadGardens(o *options) ([]config.Garden, clientFactory, error) {
