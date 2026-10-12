@@ -40,7 +40,7 @@ func (v *detailView) capturing() bool { return false }
 func (v *detailView) isLoading() bool { return v.loading }
 func (v *detailView) init() tea.Cmd   { return nil }
 func (v *detailView) hints() []hint {
-	return []hint{{"↑/↓", "scroll"}, {"esc", "back"}, {"r", "refresh"}}
+	return append(toolHints(v.app), hint{"enter", "launch…"}, hint{"*", "favorite"}, hint{"↑/↓", "scroll"}, hint{"esc", "back"})
 }
 
 func (v *detailView) refresh() tea.Cmd {
