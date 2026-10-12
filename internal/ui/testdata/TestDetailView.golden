@@ -1,0 +1,39 @@
+ gtui  gardens › dev › beta › db                                                   auto-refresh off 
+ Shoot         db                                                                                   
+ Project       beta  (garden-beta)                                                                  
+ Status        ● Error                                                                              
+ Seed          aws-eu1                                                                              
+ Kubernetes    1.31.9                                                                               
+ Provider      aws eu-central-1                                                                     
+ Purpose       production                                                                           
+ Technical ID  shoot--beta--db                                                                      
+ Created       3h ago                                                                               
+                                                                                                    
+ Last Operation                                                                                     
+ Operation     Reconcile Error (89%)                                                                
+ Updated       3h ago                                                                               
+ Message       Flow failed                                                                          
+                                                                                                    
+ Errors                                                                                             
+ ✗ task "Waiting until shoot infrastructure has been reconciled" failed: quota exceeded             
+                                                                                                    
+ Conditions                                                                                         
+ ●  APIServerAvailable              True        3h ago                                              
+ ●  ControlPlaneHealthy             False       3h ago                                              
+    DeploymentUnhealthy: kube-controller-manager is not available                                   
+ ●  ObservabilityComponentsHealthy  True        3h ago                                              
+ ●  EveryNodeReady                  True        3h ago                                              
+ ●  SystemComponentsHealthy         True        3h ago                                              
+                                                                                                    
+ Constraints                                                                                        
+ ●  HibernationPossible                True        3h ago                                           
+ ●  MaintenancePreconditionsSatisfied  False       3h ago                                           
+    PDBBlocking: PodDisruptionBudget blocks drain                                                   
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+ s/k/c/f tools · enter launch… · * favorite · ↑/↓ scroll · esc back · ? help · q quit               

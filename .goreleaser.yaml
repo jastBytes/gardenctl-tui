@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+project_name: gtui
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: gtui
+    main: ./cmd/gtui
+    binary: gtui
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - id: gtui
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - docs/gardenctl-notes.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+homebrew_casks:
+  - name: gtui
+    # The tap repository has to exist before the first release, see README ("Releasing").
+    repository:
+      owner: jastbytes
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Casks
+    homepage: https://github.com/jastbytes/gardenctl-tui
+    description: Terminal UI for Gardener landscapes, built on gardenctl
+    dependencies:
+      - formula: gardener/tap/gardenctl-v2
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gtui"]
+          end
