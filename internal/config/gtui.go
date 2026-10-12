@@ -1,0 +1,158 @@
+package config
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"sigs.k8s.io/yaml"
+)
+
+// Tool is a program that can be launched against a target.
+type Tool struct {
+	// Key is the single-character shortcut, e.g. "k".
+	Key string `json:"key"`
+	// Name is shown in the launcher menu.
+	Name string `json:"name"`
+	// Command is the argv. Placeholders: $SHELL, {garden}, {project}, {shoot}, {namespace}.
+	Command []string `json:"command"`
+	// ControlPlaneKey optionally launches the tool against the shoot's control plane.
+	// Defaults to the upper-case variant of Key.
+	ControlPlaneKey string `json:"controlPlaneKey,omitempty"`
+}
+
+// GTUI is gtui's own configuration (~/.garden/gtui.yaml).
+type GTUI struct {
+	Tools []Tool `json:"tools"`
+	// RefreshInterval for auto-refresh, e.g. "30s". "0" disables auto-refresh.
+	RefreshInterval Duration `json:"refreshInterval"`
+	// ProviderEnv evaluates `gardenctl provider-env` in launched tools by default.
+	ProviderEnv bool `json:"providerEnv,omitempty"`
+	// Gardenctl is the gardenctl binary to call.
+	Gardenctl string `json:"gardenctl,omitempty"`
+}
+
+// Duration is a time.Duration that (un)marshals as a string like "30s".
+type Duration struct{ time.Duration }
+
+func (d Duration) MarshalJSON() ([]byte, error) { return []byte(`"` + d.String() + `"`), nil }
+
+func (d *Duration) UnmarshalJSON(b []byte) error {
+	s := string(b)
+	if len(s) >= 2 && s[0] == '"' {
+		s = s[1 : len(s)-1]
+	}
+	if s == "0" || s == "" {
+		d.Duration = 0
+		return nil
+	}
+	v, err := time.ParseDuration(s)
+	if err != nil {
+		return err
+	}
+	d.Duration = v
+	return nil
+}
+
+// DefaultTools are used when gtui.yaml defines no tools.
+func DefaultTools() []Tool {
+	return []Tool{
+		{Key: "s", Name: "Shell", Command: []string{"$SHELL"}},
+		{Key: "k", Name: "k9s", Command: []string{"k9s"}},
+		{Key: "c", Name: "kubectl", Command: []string{"$SHELL", "-c", "kubectl get nodes; exec $SHELL"}},
+		{Key: "f", Name: "sofka", Command: []string{"sofka"}},
+	}
+}
+
+// DefaultGTUI returns the built-in configuration.
+func DefaultGTUI() *GTUI {
+	tools := DefaultTools()
+	for i := range tools {
+		tools[i].ControlPlaneKey = tools[i].CPKey()
+	}
+	return &GTUI{
+		Tools:           tools,
+		RefreshInterval: Duration{30 * time.Second},
+		Gardenctl:       "gardenctl",
+	}
+}
+
+// GTUIPath returns the default location of gtui.yaml.
+func GTUIPath() (string, error) {
+	dir, err := HomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "gtui.yaml"), nil
+}
+
+// LoadGTUI reads gtui.yaml; a missing file yields the defaults.
+func LoadGTUI(filename string) (*GTUI, error) {
+	cfg := DefaultGTUI()
+	buf, err := os.ReadFile(filename) // #nosec G304 -- user-provided config path
+	if errors.Is(err, os.ErrNotExist) {
+		return cfg, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	cfg.Tools = nil
+	if err := yaml.Unmarshal(buf, cfg); err != nil {
+		return nil, fmt.Errorf("parse %s: %w", filename, err)
+	}
+	if len(cfg.Tools) == 0 {
+		cfg.Tools = DefaultTools()
+	}
+	if cfg.Gardenctl == "" {
+		cfg.Gardenctl = "gardenctl"
+	}
+	if err := cfg.validate(); err != nil {
+		return nil, fmt.Errorf("%s: %w", filename, err)
+	}
+	return cfg, nil
+}
+
+// reservedKeys are used by the UI and cannot be bound to tools.
+var reservedKeys = map[string]bool{
+	"q": true, "r": true, "l": true, "h": true, "p": true,
+	"/": true, "?": true, "*": true,
+}
+
+func (c *GTUI) validate() error {
+	seen := map[string]string{}
+	for i := range c.Tools {
+		c.Tools[i].ControlPlaneKey = c.Tools[i].CPKey()
+	}
+	for _, t := range c.Tools {
+		if len(t.Command) == 0 {
+			return fmt.Errorf("tool %q has no command", t.Name)
+		}
+		for _, k := range []string{t.Key, t.ControlPlaneKey} {
+			if k == "" {
+				continue
+			}
+			if reservedKeys[k] {
+				return fmt.Errorf("tool %q: key %q is reserved", t.Name, k)
+			}
+			if other, ok := seen[k]; ok {
+				return fmt.Errorf("tool %q: key %q already used by %q", t.Name, k, other)
+			}
+			seen[k] = t.Name
+		}
+	}
+	return nil
+}
+
+// CPKey returns the control-plane shortcut: ControlPlaneKey, or upper-case Key.
+func (t Tool) CPKey() string {
+	if t.ControlPlaneKey != "" {
+		return t.ControlPlaneKey
+	}
+	if up := strings.ToUpper(t.Key); up != t.Key {
+		return up
+	}
+	return ""
+}
