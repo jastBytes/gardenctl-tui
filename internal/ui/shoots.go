@@ -93,6 +93,9 @@ func (v *shootsView) update(msg tea.Msg) tea.Cmd {
 func (v *shootsView) rebuild() {
 	rows := make([]row, 0, len(v.shoots))
 	for _, s := range v.shoots {
+		if v.app.problemsOnly && (s.Status == gardener.StatusHealthy || s.Status == gardener.StatusHibernated) {
+			continue
+		}
 		second := s.Seed
 		if v.seed != "" {
 			second = s.Project
@@ -127,7 +130,7 @@ func (v *shootsView) target(s gardener.Shoot) session.Target {
 }
 
 func (v *shootsView) hints() []hint {
-	return append(toolHints(v.app), hint{"l", "launch…"}, hint{"enter", "details"}, hint{"/", "filter"}, hint{"esc", "back"})
+	return append(toolHints(v.app), hint{"l", "launch…"}, hint{"enter", "details"}, hint{"/", "filter"}, hint{"!", "problems"}, hint{"esc", "back"})
 }
 
 func (v *shootsView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
@@ -139,6 +142,15 @@ func (v *shootsView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
 	}
 	if handled, cmd := v.tableKey(msg); handled {
 		return true, cmd
+	}
+	if msg.String() == "!" {
+		v.app.problemsOnly = !v.app.problemsOnly
+		for _, sv := range v.app.stack {
+			if sv, ok := sv.(*shootsView); ok {
+				sv.rebuild()
+			}
+		}
+		return true, nil
 	}
 	r, ok := v.tbl.selected()
 	if !ok {

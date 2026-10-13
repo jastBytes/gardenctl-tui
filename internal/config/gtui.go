@@ -128,7 +128,7 @@ func LoadGTUI(filename string) (*GTUI, error) {
 // reservedKeys are used by the UI and cannot be bound to tools.
 var reservedKeys = map[string]bool{
 	"q": true, "r": true, "a": true, "l": true, "h": true, "p": true, "w": true,
-	"/": true, "?": true, "*": true,
+	"/": true, "?": true, "*": true, "!": true,
 }
 
 func (c *GTUI) validate() error {

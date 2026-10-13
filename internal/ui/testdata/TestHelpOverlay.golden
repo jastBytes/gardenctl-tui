@@ -8,12 +8,13 @@
   │  Navigation                        Actions                       Tools                      │   
   │  ↑/↓   move (also j/k)             l      launcher menu          s Shell                    │   
   │  enter open / details              *      toggle favorite        S Shell (control plane)    │   
-  │  esc/h back                        ctrl+r recent & favorites     9 k9s                      │   
-  │  /     filter (fuzzy)              p      toggle provider-env    K k9s (control plane)      │   
-  │  tab   seeds of the garden         w      toggle new window      c kubectl                  │   
-  │  A     all shoots of the garden    r      refresh                C kubectl (control plane)  │   
-  │  g/G   first / last                a      toggle auto-refresh    f sofka                    │   
-  │                                    ?      help                   F sofka (control plane)    │   
+  │  esc/h back                        !      problems only          9 k9s                      │   
+  │  /     filter (fuzzy)              ctrl+r recent & favorites     K k9s (control plane)      │   
+  │  tab   seeds of the garden         p      toggle provider-env    c kubectl                  │   
+  │  A     all shoots of the garden    w      toggle new window      C kubectl (control plane)  │   
+  │  g/G   first / last                r      refresh                f sofka                    │   
+  │                                    a      toggle auto-refresh    F sofka (control plane)    │   
+  │                                    ?      help                                              │   
   │                                    q      quit                                              │   
   │                                                                                             │   
   │  Tool keys work on shoots, seeds, details and recent targets;                               │   
@@ -21,7 +22,6 @@
   │  Press any key to close.                                                                    │   
   │                                                                                             │   
   ╰─────────────────────────────────────────────────────────────────────────────────────────────╯   
-                                                                                                    
                                                                                                     
                                                                                                     
                                                                                                     

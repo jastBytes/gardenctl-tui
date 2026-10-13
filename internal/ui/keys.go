@@ -33,6 +33,7 @@ func (a *App) helpGroups() []helpGroup {
 	actions := []key.Binding{
 		binding("l", "launcher menu"),
 		binding("*", "toggle favorite"),
+		binding("!", "problems only"),
 		binding("ctrl+r", "recent & favorites"),
 		binding("p", "toggle provider-env"),
 		binding("w", "toggle new window"),

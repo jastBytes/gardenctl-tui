@@ -84,6 +84,8 @@ type App struct {
 	providerEnv bool
 	// newWindow starts tools in a new terminal window instead of this one.
 	newWindow bool
+	// problemsOnly hides healthy and hibernated shoots in the shoot lists.
+	problemsOnly bool
 
 	state    *state.Store
 	showHelp bool
@@ -306,6 +308,9 @@ func (a *App) breadcrumb(width int) string {
 	}
 	if a.newWindow {
 		right = styles.Info.Render("new window") + "  " + right
+	}
+	if a.problemsOnly {
+		right = styles.Info.Render("problems only") + "  " + right
 	}
 	if a.providerEnv {
 		right = styles.Info.Render("provider-env") + "  " + right

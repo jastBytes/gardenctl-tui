@@ -301,3 +301,15 @@ func TestSingleGardenStartsInProjects(t *testing.T) {
 		t.Fatalf("stack after esc: %v", got)
 	}
 }
+
+func TestProblemsOnly(t *testing.T) {
+	tm := startApp(t, testOptions(fake.Landscape()))
+	waitFor(t, tm, "live")
+	send(tm, "enter")
+	waitFor(t, tm, "garden-ops")
+	send(tm, "A")
+	waitFor(t, tm, "monitoring")
+	send(tm, "!")
+	waitFor(t, tm, "problems only")
+	snapshot(t, tm)
+}
