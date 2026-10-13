@@ -30,7 +30,8 @@ case "$1" in
     shift
     echo "$*" > "$dir/target"
     printf 'apiVersion: v1\nkind: Config\n' > "$dir/kubeconfig.yaml"
-    echo "Successfully targeted" ;;
+    echo "Successfully targeted"
+    [ "$KUBECONFIG" = "$dir/kubeconfig.yaml" ] || echo "WARN The KUBECONFIG environment variable does not point to the current target of gardenctl." ;;
   kubectl-env)
     need_sid
     [ -f "$dir/target" ] || { echo "Error: no target" >&2; exit 1; }

@@ -134,6 +134,9 @@ func TestLaunchToolFromShootTable(t *testing.T) {
 	if strings.TrimSpace(string(target)) != "--garden dev --project alpha --shoot api-gw" {
 		t.Fatalf("gardenctl target args: %q", target)
 	}
+	if strings.Contains(e.rec.String(), "WARN") {
+		t.Fatalf("gardenctl warned about KUBECONFIG: %q", e.rec.String())
+	}
 	if !strings.Contains(e.rec.String(), "gtui: targeting dev/alpha/api-gw") ||
 		!strings.Contains(e.rec.String(), "gtui: envdump on dev/alpha/api-gw") {
 		t.Fatalf("banner missing: %q", e.rec.String())

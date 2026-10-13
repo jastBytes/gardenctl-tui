@@ -112,8 +112,18 @@ func (m *Manager) New(t Target) *Session {
 		}
 		env = append(env, kv)
 	}
-	env = append(env, EnvSessionID+"="+id, EnvTarget+"="+t.String())
+	// gardenctl target warns unless KUBECONFIG is <session dir>/kubeconfig.yaml
+	// (its default symlink mode); Env replaces this with the actual path.
+	kc := filepath.Join(m.tempDir(), "garden", "sessions", id, "kubeconfig.yaml")
+	env = append(env, EnvSessionID+"="+id, EnvTarget+"="+t.String(), EnvKubeconfig+"="+kc)
 	return &Session{ID: id, Target: t, Env: env}
+}
+
+func (m *Manager) tempDir() string {
+	if m.TempDir != "" {
+		return m.TempDir
+	}
+	return os.TempDir()
 }
 
 // TargetCommand returns `gardenctl target` for the session. It must run in the
@@ -134,7 +144,11 @@ func (m *Manager) Env(ctx context.Context, s *Session) error {
 		return err
 	}
 	s.Kubeconfig = kc
-	s.Env = append(s.Env, EnvKubeconfig+"="+kc)
+	for i, kv := range s.Env {
+		if strings.HasPrefix(kv, EnvKubeconfig+"=") {
+			s.Env[i] = EnvKubeconfig + "=" + kc
+		}
+	}
 	return nil
 }
 
@@ -165,10 +179,7 @@ func (m *Manager) Cleanup() error {
 	m.created = nil
 	m.mu.Unlock()
 
-	base := m.TempDir
-	if base == "" {
-		base = os.TempDir()
-	}
+	base := m.tempDir()
 	var errs []error
 	for _, id := range ids {
 		if !sidRegexp.MatchString(id) {

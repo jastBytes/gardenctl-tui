@@ -144,8 +144,8 @@ func TestPrepare(t *testing.T) {
 		if v := envValue(c.env, EnvSessionID); !reflect.DeepEqual(v, []string{"sid-1"}) {
 			t.Fatalf("gardenctl must run with the new session id only, got %v", v)
 		}
-		if v := envValue(c.env, EnvKubeconfig); len(v) != 0 {
-			t.Fatalf("parent KUBECONFIG leaked into gardenctl call: %v", v)
+		if v := envValue(c.env, EnvKubeconfig); len(v) != 1 || v[0] == "/parent" {
+			t.Fatalf("gardenctl must get the session KUBECONFIG, not the parent's: %v", v)
 		}
 	}
 	if s.Kubeconfig != "/tmp/garden/sessions/sid-1/kubeconfig.yaml" {
