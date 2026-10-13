@@ -86,6 +86,7 @@ providerEnv: false       # start with provider-env enabled
 newWindow: false         # start tools in a new terminal window (toggle: w)
 terminal: []             # command that opens a window, e.g. [tmux, new-window]
 gardenctl: gardenctl     # gardenctl binary
+rememberLocation: false  # reopen the view gtui was quit in
 tools:
   - key: "s"
     name: "Shell"
@@ -106,6 +107,11 @@ tools:
 - Each tool also gets a control-plane key, by default the upper-case key. Set
   `controlPlaneKey` to choose another one.
 - The keys `q r a l h p w / ? *` are reserved.
+- With `rememberLocation: true`, gtui saves where you were when you quit
+  (garden, project or seed, shoot list or shoot details, and the selected row)
+  and opens that view again on the next start. If an item no longer exists,
+  gtui stops at the last level it can open. Pressing a key while it is still
+  restoring stops the restoring.
 
 ### Same terminal or new window
 
@@ -131,7 +137,8 @@ The session environment (`KUBECONFIG`, `GCTL_SESSION_ID`, …) is passed through
 tools started in a window are not deleted when gtui exits, as the window may
 still use them.
 
-Recent targets and favorites are stored in `~/.garden/gtui-state.yaml`.
+Recent targets, favorites and the last location are stored in
+`~/.garden/gtui-state.yaml`.
 
 ### Showing the target in your prompt
 

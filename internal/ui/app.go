@@ -87,6 +87,10 @@ type App struct {
 
 	state    *state.Store
 	showHelp bool
+
+	// restore is the remaining remembered path; restoreView waits for its rows.
+	restore     []state.Crumb
+	restoreView int
 }
 
 // New creates the root model.
@@ -115,6 +119,7 @@ func New(opts Options) *App {
 		newWindow:   opts.Config.NewWindow,
 	}
 	a.stack = []view{newGardensView(a)}
+	a.startRestore()
 	return a
 }
 
@@ -172,12 +177,16 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case pushMsg:
 		a.stack = append(a.stack, msg.v)
 		a.status = ""
+		a.restorePushed(msg.v)
 		return a, msg.v.init()
 
 	case loadedMsg:
 		for _, v := range a.stack {
 			if v.id() == msg.viewID {
 				if msg.err != nil {
+					if v.id() == a.restoreView {
+						a.stopRestore()
+					}
 					a.status, a.statusErr, a.statusFromLoad = msg.err.Error(), true, true
 				} else if a.statusFromLoad {
 					a.status, a.statusErr, a.statusFromLoad = "", false, false
@@ -197,6 +206,7 @@ func (a *App) handleKey(msg tea.KeyMsg) tea.Cmd {
 	if msg.String() == "ctrl+c" {
 		return tea.Quit
 	}
+	a.stopRestore() // the user takes over
 	if a.showHelp {
 		a.showHelp = false
 		return nil

@@ -95,6 +95,7 @@ func TestLoadGTUI(t *testing.T) {
 	p := write(t, t.TempDir(), "gtui.yaml", `
 refreshInterval: "0"
 providerEnv: true
+rememberLocation: true
 newWindow: true
 terminal: [kitty, "--"]
 tools:
@@ -110,7 +111,7 @@ tools:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.RefreshInterval.Duration != 0 || !cfg.ProviderEnv || !cfg.NewWindow ||
+	if cfg.RefreshInterval.Duration != 0 || !cfg.ProviderEnv || !cfg.NewWindow || !cfg.RememberLocation ||
 		len(cfg.Terminal) != 2 || cfg.Terminal[0] != "kitty" || len(cfg.Tools) != 2 {
 		t.Fatalf("cfg: %+v", cfg)
 	}

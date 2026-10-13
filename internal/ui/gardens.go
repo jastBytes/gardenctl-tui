@@ -21,7 +21,7 @@ func newGardensView(a *App) *gardensView {
 }
 
 func (v *gardensView) title() string    { return "gardens" }
-func (v *gardensView) init() tea.Cmd    { return nil }
+func (v *gardensView) init() tea.Cmd    { return v.app.applyRestore(v.vid, v.tbl, v.open) }
 func (v *gardensView) refresh() tea.Cmd { return nil }
 func (v *gardensView) hints() []hint {
 	return []hint{{"enter", "projects"}, {"tab", "seeds"}, {"/", "filter"}}

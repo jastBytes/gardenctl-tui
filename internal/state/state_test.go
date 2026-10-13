@@ -92,3 +92,19 @@ func TestLoadInvalid(t *testing.T) {
 		t.Fatal("expected parse error")
 	}
 }
+
+func TestLocation(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.yaml")
+	s, _ := Load(path)
+	loc := []Crumb{{View: "gardens", Selected: "dev"}, {View: "details"}}
+	if err := s.SetLocation(loc); err != nil {
+		t.Fatal(err)
+	}
+	reloaded, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := reloaded.Location(); len(got) != 2 || got[0] != loc[0] || got[1] != loc[1] {
+		t.Fatalf("location: %+v", got)
+	}
+}
