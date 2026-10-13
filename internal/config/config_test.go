@@ -83,7 +83,7 @@ func TestLoadGTUIDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cfg.Tools) != 4 || cfg.RefreshInterval.Duration != 30*time.Second || cfg.Gardenctl != "gardenctl" {
+	if len(cfg.Tools) != 4 || cfg.RefreshInterval.Duration != 5*time.Second || cfg.Gardenctl != "gardenctl" {
 		t.Fatalf("defaults: %+v", cfg)
 	}
 	if cfg.Tools[1].ControlPlaneKey != "K" {
