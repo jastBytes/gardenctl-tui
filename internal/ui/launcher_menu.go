@@ -63,7 +63,7 @@ func (v *menuView) title() string    { return "launch" }
 func (v *menuView) init() tea.Cmd    { return nil }
 func (v *menuView) refresh() tea.Cmd { return nil }
 func (v *menuView) hints() []hint {
-	return []hint{{"enter", "launch"}, {"p", "provider-env"}, {"esc", "back"}}
+	return []hint{{"enter", "launch"}, {"p", "provider-env"}, {"w", "new window"}, {"esc", "back"}}
 }
 
 func (v *menuView) key(msg tea.KeyMsg) (bool, tea.Cmd) {

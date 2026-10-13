@@ -96,6 +96,8 @@ func TestLoadGTUI(t *testing.T) {
 refreshInterval: "0"
 providerEnv: true
 rememberLocation: true
+newWindow: true
+terminal: [kitty, "--"]
 tools:
 - key: x
   name: htop
@@ -109,7 +111,8 @@ tools:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.RefreshInterval.Duration != 0 || !cfg.ProviderEnv || !cfg.RememberLocation || len(cfg.Tools) != 2 {
+	if cfg.RefreshInterval.Duration != 0 || !cfg.ProviderEnv || !cfg.NewWindow || !cfg.RememberLocation ||
+		len(cfg.Terminal) != 2 || cfg.Terminal[0] != "kitty" || len(cfg.Tools) != 2 {
 		t.Fatalf("cfg: %+v", cfg)
 	}
 	if cfg.Tools[0].ControlPlaneKey != "X" || cfg.Tools[1].ControlPlaneKey != "(" {
