@@ -57,23 +57,6 @@ jobs:
       - name: Check go.mod and go.sum are tidy
         run: git diff --exit-code -- go.mod go.sum
 
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        goos: [linux, darwin]
-        goarch: [amd64, arm64]
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-      - run: go build ./...
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: "0"
-
   vuln:
     runs-on: ubuntu-latest
     steps:

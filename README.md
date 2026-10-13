@@ -174,9 +174,9 @@ gtui --demo                      # try the UI without a cluster
 ```
 
 CI (`.github/workflows/ci.yml`) runs golangci-lint, `go vet`, the tests with the
-race detector and coverage, a `go mod tidy` check, cross-builds for all release
-targets, govulncheck and `goreleaser check`. Dependabot keeps Go modules and
-GitHub Actions up to date.
+race detector and coverage, a `go mod tidy` check, govulncheck and
+`goreleaser check`; binaries are only built by the release workflow. Dependabot
+keeps Go modules and GitHub Actions up to date.
 
 ### Releasing
 
