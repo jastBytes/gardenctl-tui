@@ -61,6 +61,7 @@ Flags: `--config` (gardenctl config file), `--gtui-config` (gtui config file),
 | `s` `9` `c` `f` | Shell / k9s / kubectl / sofka on the selected shoot |
 | `S` `K` `C` `F` | the same on the shoot's **control plane** (seed namespace) |
 | `*` | toggle favorite |
+| `!` | shoot lists: show only shoots with problems (red or yellow) |
 | `ctrl+r` | recent targets and favorites |
 | `p` | toggle provider-env (cloud provider CLI credentials) for launched tools |
 | `w` | toggle where tools start: this terminal or a new terminal window |
@@ -108,7 +109,7 @@ tools:
   `{shoot}`, `{namespace}` (the shoot's project namespace).
 - Each tool also gets a control-plane key, by default the upper-case key. Set
   `controlPlaneKey` to choose another one.
-- The keys `q r a l h p w / ? *` are reserved.
+- The keys `q r a l h p w / ? * !` are reserved.
 - With `rememberLocation: true`, gtui saves where you were when you quit
   (garden, project or seed, shoot list or shoot details, and the selected row)
   and opens that view again on the next start. If an item no longer exists,
