@@ -13,7 +13,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/muesli/termenv v0.16.0
 	github.com/sahilm/fuzzy v0.1.3
-	golang.org/x/sys v0.48.0
+	golang.org/x/sys v0.49.0
 	k8s.io/apimachinery v0.36.4
 	k8s.io/client-go v0.36.4
 	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
