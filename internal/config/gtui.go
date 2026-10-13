@@ -13,7 +13,7 @@ import (
 
 // Tool is a program that can be launched against a target.
 type Tool struct {
-	// Key is the single-character shortcut, e.g. "k".
+	// Key is the single-character shortcut, e.g. "s".
 	Key string `json:"key"`
 	// Name is shown in the launcher menu.
 	Name string `json:"name"`
@@ -70,7 +70,8 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 func DefaultTools() []Tool {
 	return []Tool{
 		{Key: "s", Name: "Shell", Command: []string{"$SHELL"}},
-		{Key: "k", Name: "k9s", Command: []string{"k9s"}},
+		// Not "k": that moves the cursor up in every list (vim keys).
+		{Key: "9", Name: "k9s", Command: []string{"k9s"}, ControlPlaneKey: "K"},
 		{Key: "c", Name: "kubectl", Command: []string{"$SHELL", "-c", "kubectl get nodes; exec $SHELL"}},
 		{Key: "f", Name: "sofka", Command: []string{"sofka"}},
 	}

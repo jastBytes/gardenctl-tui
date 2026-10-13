@@ -144,3 +144,22 @@ func TestLocationSkipsMenuAndRecent(t *testing.T) {
 		t.Fatalf("location: %+v", got)
 	}
 }
+
+func TestRememberLocationAllShoots(t *testing.T) {
+	opts, path := rememberOptions(t)
+	tm := startApp(t, opts)
+	waitFor(t, tm, "live")
+	send(tm, "enter")
+	waitFor(t, tm, "garden-ops")
+	send(tm, "A")
+	waitFor(t, tm, "db")
+	quitAndSave(t, tm)
+
+	opts.State, _ = state.Load(path)
+	tm = startApp(t, opts)
+	waitFor(t, tm, "db")
+	app := quitAndSave(t, tm)
+	if got := titles(app); !reflect.DeepEqual(got, []string{"gardens", "dev", "all shoots"}) {
+		t.Fatalf("restored stack: %v", got)
+	}
+}

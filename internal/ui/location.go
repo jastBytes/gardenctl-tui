@@ -14,6 +14,7 @@ const (
 	kindProjects = "projects"
 	kindSeeds    = "seeds"
 	kindShoots   = "shoots"
+	kindAll      = "all-shoots"
 	kindDetails  = "details"
 )
 
@@ -129,6 +130,8 @@ func (v *projectsView) open(kind string) tea.Cmd {
 	switch kind {
 	case kindSeeds:
 		return push(newSeedsView(v.app, v.garden))
+	case kindAll:
+		return push(newGardenShootsView(v.app, v.garden))
 	case kindShoots:
 		r, ok := v.tbl.selected()
 		if !ok || r.data.(gardener.Project).Namespace == "" {
@@ -152,7 +155,11 @@ func (v *seedsView) open(kind string) tea.Cmd {
 }
 
 func (v *shootsView) crumb() state.Crumb {
-	return state.Crumb{View: kindShoots, Selected: selectedKey(v.tbl)}
+	kind := kindShoots
+	if v.all() {
+		kind = kindAll
+	}
+	return state.Crumb{View: kind, Selected: selectedKey(v.tbl)}
 }
 
 func (v *shootsView) open(kind string) tea.Cmd {

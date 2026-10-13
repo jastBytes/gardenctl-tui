@@ -27,6 +27,7 @@ func (a *App) helpGroups() []helpGroup {
 		binding("esc/h", "back"),
 		binding("/", "filter (fuzzy)"),
 		binding("tab", "seeds of the garden"),
+		binding("A", "all shoots of the garden"),
 		binding("g/G", "first / last"),
 	}
 	actions := []key.Binding{
@@ -70,7 +71,7 @@ func (a *App) renderHelp(width, height int) string {
 		groups,
 		"",
 		styles.Dim.Render("Tool keys work on shoots, seeds, details and recent targets;"),
-		styles.Dim.Render("in those views they win over j/k. Tools: ~/.garden/gtui.yaml"),
+		styles.Dim.Render("in those views they win over j/k/g/G. Tools: ~/.garden/gtui.yaml"),
 		styles.Dim.Render("Press any key to close."),
 	)
 	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, styles.Overlay.Render(body))

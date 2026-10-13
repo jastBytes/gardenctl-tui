@@ -120,6 +120,10 @@ func New(opts Options) *App {
 	}
 	a.stack = []view{newGardensView(a)}
 	a.startRestore()
+	// A single garden needs no choice; esc still leads back to the gardens list.
+	if len(a.restore) == 0 && len(opts.Gardens) == 1 {
+		a.stack = append(a.stack, newProjectsView(a, opts.Gardens[0]))
+	}
 	return a
 }
 

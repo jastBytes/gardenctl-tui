@@ -56,8 +56,9 @@ Flags: `--config` (gardenctl config file), `--gtui-config` (gtui config file),
 | `esc`, `h` | back |
 | `/` | fuzzy filter (`esc` clears it) |
 | `tab` | seeds of the garden (seed → shoots on that seed) |
+| `A` | all shoots of the garden (in the project list) |
 | `l` | launcher menu for the selected shoot or seed |
-| `s` `k` `c` `f` | Shell / k9s / kubectl / sofka on the selected shoot |
+| `s` `9` `c` `f` | Shell / k9s / kubectl / sofka on the selected shoot |
 | `S` `K` `C` `F` | the same on the shoot's **control plane** (seed namespace) |
 | `*` | toggle favorite |
 | `ctrl+r` | recent targets and favorites |
@@ -68,8 +69,8 @@ Flags: `--config` (gardenctl config file), `--gtui-config` (gtui config file),
 | `q`, `ctrl+c` | quit |
 
 Tool keys are active in the shoot list, the seed list, the shoot details and
-the recent list. There they take precedence over the vim keys, so `k` starts
-k9s; use the arrow keys to move.
+the recent list. A tool bound to a vim key (`j`, `k`, `g`, `G`) takes
+precedence over it there; use the arrow keys to move then.
 
 Status colors: green = all conditions `True`, yellow = an operation is running
 or a condition is `Progressing`/`Unknown`, red = failed operation, errors or a
@@ -91,9 +92,10 @@ tools:
   - key: "s"
     name: "Shell"
     command: ["$SHELL"]
-  - key: "k"
+  - key: "9"
     name: "k9s"
     command: ["k9s"]
+    controlPlaneKey: "K"
   - key: "c"
     name: "kubectl"
     command: ["$SHELL", "-c", "kubectl get nodes; exec $SHELL"]

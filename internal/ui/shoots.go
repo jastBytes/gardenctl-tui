@@ -13,7 +13,7 @@ import (
 	"github.com/jastbytes/gardenctl-tui/internal/ui/styles"
 )
 
-// shootsView lists the shoots of a project or of a seed.
+// shootsView lists the shoots of a project, of a seed, or of the whole garden.
 type shootsView struct {
 	listBase
 	garden  config.Garden
@@ -40,9 +40,23 @@ func newSeedShootsView(a *App, g config.Garden, seed string) *shootsView {
 	}
 }
 
+// newGardenShootsView lists all shoots of the garden (neither project nor seed set).
+func newGardenShootsView(a *App, g config.Garden) *shootsView {
+	return &shootsView{
+		listBase: newListBase(a, column{title: "Shoot"}, column{title: "Project"}, column{title: "Seed"}, column{title: "Version"},
+			column{title: "Status"}, column{title: "Last Operation", max: 40}, column{title: "Purpose"}),
+		garden: g,
+	}
+}
+
+func (v *shootsView) all() bool { return v.project == nil && v.seed == "" }
+
 func (v *shootsView) title() string {
-	if v.project != nil {
+	switch {
+	case v.project != nil:
 		return v.project.Name
+	case v.all():
+		return "all shoots"
 	}
 	return "seed " + v.seed
 }
@@ -56,8 +70,11 @@ func (v *shootsView) refresh() tea.Cmd {
 		if err != nil {
 			return nil, err
 		}
-		if v.project != nil {
+		switch {
+		case v.project != nil:
 			return c.ListShoots(ctx, v.project.Namespace)
+		case v.all():
+			return c.ListShoots(ctx, "")
 		}
 		return c.ListShootsOnSeed(ctx, v.seed)
 	}))
@@ -77,19 +94,20 @@ func (v *shootsView) rebuild() {
 	rows := make([]row, 0, len(v.shoots))
 	for _, s := range v.shoots {
 		second := s.Seed
-		if v.project == nil {
+		if v.seed != "" {
 			second = s.Project
 		}
 		name := s.Name
 		if v.app.state.IsFavorite(v.target(s)) {
 			name = "★ " + name
 		}
-		rows = append(rows, row{
-			key:    s.Namespace + "/" + s.Name,
-			cells:  []string{name, second, s.Version, styles.StatusText(s.Status), s.LastOp.String(), s.Purpose},
-			colors: []lipgloss.TerminalColor{nil, nil, nil, styles.StatusColor(s.Status)},
-			data:   s,
-		})
+		cells := []string{name, second, s.Version, styles.StatusText(s.Status), s.LastOp.String(), s.Purpose}
+		colors := []lipgloss.TerminalColor{nil, nil, nil, styles.StatusColor(s.Status)}
+		if v.all() {
+			cells = append([]string{name, s.Project}, cells[1:]...)
+			colors = append([]lipgloss.TerminalColor{nil}, colors...)
+		}
+		rows = append(rows, row{key: s.Namespace + "/" + s.Name, cells: cells, colors: colors, data: s})
 	}
 	v.tbl.setRows(rows)
 }
@@ -97,9 +115,12 @@ func (v *shootsView) rebuild() {
 // target returns the launch target for a shoot of this view.
 func (v *shootsView) target(s gardener.Shoot) session.Target {
 	t := session.Target{Garden: v.garden.Name, Shoot: s.Name, Namespace: s.Namespace}
-	if v.project != nil {
+	switch {
+	case v.project != nil:
 		t.Project = v.project.Name
-	} else {
+	case v.all():
+		t.Project = s.Project
+	default:
 		t.Seed = v.seed
 	}
 	return t
@@ -110,7 +131,7 @@ func (v *shootsView) hints() []hint {
 }
 
 func (v *shootsView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
-	// Tool shortcuts take precedence over vim-style navigation (e.g. k = k9s).
+	// Tool shortcuts take precedence over vim-style navigation (if a tool uses j/k/g/G).
 	if r, ok := v.tbl.selected(); ok && !v.tbl.filtering() {
 		if handled, cmd := v.app.launchKey(msg.String(), v.target(r.data.(gardener.Shoot))); handled {
 			return true, cmd
