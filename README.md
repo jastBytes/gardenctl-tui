@@ -105,6 +105,9 @@ tools:
     command: ["sofka"]
 ```
 
+- `refreshInterval` reloads the current view every interval (e.g. `10s`,
+  `1m`). `a` pauses and resumes it while gtui runs; `0` turns it off
+  completely (then `a` cannot turn it on). `r` refreshes once.
 - Placeholders in `command`: `$SHELL`, `{garden}`, `{project}`, `{seed}`,
   `{shoot}`, `{namespace}` (the shoot's project namespace).
 - Each tool also gets a control-plane key, by default the upper-case key. Set
