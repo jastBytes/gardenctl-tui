@@ -85,7 +85,7 @@ func DefaultGTUI() *GTUI {
 	}
 	return &GTUI{
 		Tools:           tools,
-		RefreshInterval: Duration{30 * time.Second},
+		RefreshInterval: Duration{5 * time.Second},
 		Gardenctl:       "gardenctl",
 	}
 }

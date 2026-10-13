@@ -83,7 +83,7 @@ gtui reads `~/.garden/gtui.yaml` (or `$GCTL_HOME/gtui.yaml`). Everything is
 optional; these are the defaults:
 
 ```yaml
-refreshInterval: 30s     # "0" disables auto-refresh
+refreshInterval: 5s      # "0" disables auto-refresh
 providerEnv: false       # start with provider-env enabled
 newWindow: false         # start tools in a new terminal window (toggle: w)
 terminal: []             # command that opens a window, e.g. [tmux, new-window]
@@ -105,6 +105,9 @@ tools:
     command: ["sofka"]
 ```
 
+- `refreshInterval` reloads the current view every interval (e.g. `10s`,
+  `1m`). `a` pauses and resumes it while gtui runs; `0` turns it off
+  completely (then `a` cannot turn it on). `r` refreshes once.
 - Placeholders in `command`: `$SHELL`, `{garden}`, `{project}`, `{seed}`,
   `{shoot}`, `{namespace}` (the shoot's project namespace).
 - Each tool also gets a control-plane key, by default the upper-case key. Set
