@@ -33,6 +33,8 @@ type GTUI struct {
 	ProviderEnv bool `json:"providerEnv,omitempty"`
 	// Gardenctl is the gardenctl binary to call.
 	Gardenctl string `json:"gardenctl,omitempty"`
+	// RememberLocation reopens the view (and selection) gtui was quit in.
+	RememberLocation bool `json:"rememberLocation,omitempty"`
 }
 
 // Duration is a time.Duration that (un)marshals as a string like "30s".

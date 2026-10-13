@@ -97,6 +97,17 @@ func (t *table) selected() (row, bool) {
 	return t.visible[t.cursor], true
 }
 
+// selectKey moves the cursor to the visible row with key and reports whether it exists.
+func (t *table) selectKey(key string) bool {
+	for i, r := range t.visible {
+		if r.key == key {
+			t.cursor = i
+			return true
+		}
+	}
+	return false
+}
+
 func (t *table) filtering() bool { return t.filter.Focused() }
 
 func (t *table) filterActive() bool { return t.filter.Value() != "" }

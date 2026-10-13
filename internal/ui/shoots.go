@@ -70,7 +70,7 @@ func (v *shootsView) update(msg tea.Msg) tea.Cmd {
 	}
 	v.shoots = m.data.([]gardener.Shoot)
 	v.rebuild()
-	return nil
+	return v.app.applyRestore(v.vid, v.tbl, v.open)
 }
 
 func (v *shootsView) rebuild() {

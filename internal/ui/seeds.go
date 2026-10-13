@@ -55,7 +55,7 @@ func (v *seedsView) update(msg tea.Msg) tea.Cmd {
 		})
 	}
 	v.tbl.setRows(rows)
-	return nil
+	return v.app.applyRestore(v.vid, v.tbl, v.open)
 }
 
 func (v *seedsView) hints() []hint {

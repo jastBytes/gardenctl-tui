@@ -41,9 +41,16 @@ func FromTarget(t session.Target) Entry {
 	return Entry{Garden: t.Garden, Project: t.Project, Seed: t.Seed, Shoot: t.Shoot, Namespace: t.Namespace}
 }
 
+// Crumb is one level of the navigation path: a view and its selected row.
+type Crumb struct {
+	View     string `json:"view"`
+	Selected string `json:"selected,omitempty"`
+}
+
 type file struct {
 	Recent    []Entry `json:"recent,omitempty"`
 	Favorites []Entry `json:"favorites,omitempty"`
+	Location  []Crumb `json:"location,omitempty"`
 }
 
 // Store holds recent targets and favorites and saves them to a YAML file.
@@ -98,6 +105,21 @@ func (s *Store) IsFavorite(t session.Target) bool {
 		}
 	}
 	return false
+}
+
+// Location returns the last saved navigation path.
+func (s *Store) Location() []Crumb {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]Crumb(nil), s.data.Location...)
+}
+
+// SetLocation stores the navigation path and saves the store.
+func (s *Store) SetLocation(loc []Crumb) error {
+	s.mu.Lock()
+	s.data.Location = append([]Crumb(nil), loc...)
+	s.mu.Unlock()
+	return s.save()
 }
 
 // AddRecent records a launch of tool on t and saves the store.

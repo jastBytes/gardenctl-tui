@@ -95,6 +95,7 @@ func TestLoadGTUI(t *testing.T) {
 	p := write(t, t.TempDir(), "gtui.yaml", `
 refreshInterval: "0"
 providerEnv: true
+rememberLocation: true
 tools:
 - key: x
   name: htop
@@ -108,7 +109,7 @@ tools:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.RefreshInterval.Duration != 0 || !cfg.ProviderEnv || len(cfg.Tools) != 2 {
+	if cfg.RefreshInterval.Duration != 0 || !cfg.ProviderEnv || !cfg.RememberLocation || len(cfg.Tools) != 2 {
 		t.Fatalf("cfg: %+v", cfg)
 	}
 	if cfg.Tools[0].ControlPlaneKey != "X" || cfg.Tools[1].ControlPlaneKey != "(" {

@@ -82,6 +82,7 @@ optional; these are the defaults:
 refreshInterval: 30s     # "0" disables auto-refresh
 providerEnv: false       # start with provider-env enabled
 gardenctl: gardenctl     # gardenctl binary
+rememberLocation: false  # reopen the view gtui was quit in
 tools:
   - key: "s"
     name: "Shell"
@@ -103,7 +104,14 @@ tools:
   `controlPlaneKey` to choose another one.
 - The keys `q r a l h p / ? *` are reserved.
 
-Recent targets and favorites are stored in `~/.garden/gtui-state.yaml`.
+- With `rememberLocation: true`, gtui saves where you were when you quit
+  (garden, project or seed, shoot list or shoot details, and the selected row)
+  and opens that view again on the next start. If an item no longer exists,
+  gtui stops at the last level it can open. Pressing a key while it is still
+  restoring stops the restoring.
+
+Recent targets, favorites and the last location are stored in
+`~/.garden/gtui-state.yaml`.
 
 ### Showing the target in your prompt
 

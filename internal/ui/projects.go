@@ -49,7 +49,7 @@ func (v *projectsView) update(msg tea.Msg) tea.Cmd {
 		rows = append(rows, row{key: p.Name, cells: []string{p.Name, p.Namespace, p.Phase, p.Owner, p.Purpose}, data: p})
 	}
 	v.tbl.setRows(rows)
-	return nil
+	return v.app.applyRestore(v.vid, v.tbl, v.open)
 }
 
 func (v *projectsView) hints() []hint {

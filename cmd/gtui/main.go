@@ -115,10 +115,13 @@ func run(args []string) error {
 	// No signal context here: a Ctrl+C inside a launched tool must not quit gtui.
 	// Bubble Tea handles signals itself and ignores them while a tool runs.
 	_, err = tea.NewProgram(app, tea.WithAltScreen()).Run()
+	if serr := app.SaveLocation(); serr != nil {
+		fmt.Fprintln(os.Stderr, "gtui: saving the location failed:", serr)
+	}
 	return err
 }
 
-// loadState opens ~/.garden/gtui-state.yaml (recent targets and favorites).
+// loadState opens ~/.garden/gtui-state.yaml (recent targets, favorites, location).
 // Demo mode keeps its state in memory.
 func loadState(demo bool) (*state.Store, error) {
 	if demo {
