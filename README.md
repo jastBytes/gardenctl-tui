@@ -204,10 +204,16 @@ exit.
 ## Development
 
 ```sh
-make build test lint
+make all                         # build, vet, test, lint
+make vuln                        # govulncheck
 go test ./internal/ui/ -update   # refresh teatest golden files
 gtui --demo                      # try the UI without a cluster
 ```
+
+CI (`.github/workflows/ci.yml`) runs golangci-lint, `go vet`, the tests with the
+race detector and coverage, a `go mod tidy` check, govulncheck and
+`goreleaser check`; binaries are only built by the release workflow. Dependabot
+keeps Go modules and GitHub Actions up to date.
 
 ### Releasing
 
