@@ -171,6 +171,19 @@ func (m *Manager) Version(ctx context.Context) (string, error) {
 	return info.GitVersion, nil
 }
 
+// Keep excludes the session from Cleanup, e.g. because a tool in another
+// terminal window still uses it after gtui exits.
+func (m *Manager) Keep(s *Session) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for i, id := range m.created {
+		if id == s.ID {
+			m.created = append(m.created[:i], m.created[i+1:]...)
+			return
+		}
+	}
+}
+
 // Cleanup removes the gardenctl session directories of all sessions created
 // by this manager (and only those).
 func (m *Manager) Cleanup() error {

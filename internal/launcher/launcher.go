@@ -156,3 +156,58 @@ func (e *Exec) Run() error {
 	}
 	return err
 }
+
+// DetectTerminal returns the command prefix that opens a new terminal window
+// for the terminal gtui runs in, or nil if it cannot tell. The tool's argv is
+// appended to it.
+func DetectTerminal() []string {
+	switch {
+	case os.Getenv("TMUX") != "":
+		return []string{"tmux", "new-window"}
+	case os.Getenv("ZELLIJ") != "":
+		return []string{"zellij", "run", "--"}
+	case os.Getenv("KITTY_WINDOW_ID") != "":
+		return []string{"kitty", "--"}
+	case os.Getenv("WEZTERM_PANE") != "":
+		return []string{"wezterm", "start", "--"}
+	case os.Getenv("TERM_PROGRAM") == "ghostty":
+		return []string{"ghostty", "-e"}
+	case os.Getenv("ALACRITTY_WINDOW_ID") != "":
+		return []string{"alacritty", "-e"}
+	case os.Getenv("GNOME_TERMINAL_SCREEN") != "":
+		return []string{"gnome-terminal", "--"}
+	}
+	if _, err := LookPath("x-terminal-emulator"); err == nil {
+		return []string{"x-terminal-emulator", "-e"}
+	}
+	return nil
+}
+
+// WindowCommand wraps cmd so that it runs in a new terminal window opened by
+// terminal (a command prefix such as ["tmux", "new-window"]). Terminals that
+// reuse a running instance (tmux, kitty, gnome-terminal, …) do not pass on the
+// caller's environment, so the variables that differ from gtui's own
+// environment are set through env(1) in the window.
+func WindowCommand(cmd *exec.Cmd, terminal []string) (*exec.Cmd, error) {
+	if len(terminal) == 0 {
+		return nil, fmt.Errorf("no terminal for new windows found, set \"terminal\" in gtui.yaml")
+	}
+	own := map[string]bool{}
+	for _, kv := range os.Environ() {
+		own[kv] = true
+	}
+	argv := append([]string(nil), terminal...)
+	argv = append(argv, "env")
+	for _, kv := range cmd.Env {
+		if !own[kv] {
+			argv = append(argv, kv)
+		}
+	}
+	argv = append(argv, cmd.Args...)
+	w := exec.Command(argv[0], argv[1:]...) // #nosec G204 -- user-configured terminal and tool
+	w.Env = cmd.Env
+	// Detach from gtui's terminal: no stdio, own session, so that neither
+	// keyboard signals nor gtui exiting affect the window.
+	w.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	return w, nil
+}

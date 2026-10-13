@@ -82,6 +82,8 @@ type App struct {
 	// busy is set while a tool is being prepared or running.
 	busy        string
 	providerEnv bool
+	// newWindow starts tools in a new terminal window instead of this one.
+	newWindow bool
 
 	state    *state.Store
 	showHelp bool
@@ -110,6 +112,7 @@ func New(opts Options) *App {
 		spinner:     sp,
 		autoRefresh: opts.Config.RefreshInterval.Duration > 0,
 		providerEnv: opts.Config.ProviderEnv,
+		newWindow:   opts.Config.NewWindow,
 	}
 	a.stack = []view{newGardensView(a)}
 	return a
@@ -220,6 +223,12 @@ func (a *App) handleKey(msg tea.KeyMsg) tea.Cmd {
 			return setStatus("provider-env on: launched tools get cloud provider credentials", false)
 		}
 		return setStatus("provider-env off", false)
+	case "w":
+		a.newWindow = !a.newWindow
+		if a.newWindow {
+			return setStatus("tools start in a new terminal window", false)
+		}
+		return setStatus("tools start in this terminal", false)
 	case "r":
 		a.status = ""
 		return top.refresh()
@@ -280,6 +289,9 @@ func (a *App) breadcrumb(width int) string {
 	right := styles.Dim.Render("auto-refresh off")
 	if a.autoRefresh {
 		right = styles.Dim.Render("⟳ " + a.opts.Config.RefreshInterval.String())
+	}
+	if a.newWindow {
+		right = styles.Info.Render("new window") + "  " + right
 	}
 	if a.providerEnv {
 		right = styles.Info.Render("provider-env") + "  " + right

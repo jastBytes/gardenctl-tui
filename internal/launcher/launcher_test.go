@@ -122,3 +122,30 @@ func TestExecSendsStderrToTerminal(t *testing.T) {
 		t.Fatalf("terminal %q, log %q, captured %q", got, logFile.String(), captured.String())
 	}
 }
+
+func TestWindowCommand(t *testing.T) {
+	t.Setenv("GTUI_TEST_SAME", "1")
+	cmd := exec.Command("k9s", "-n", "x")
+	cmd.Env = []string{"GTUI_TEST_SAME=1", "KUBECONFIG=/kc"}
+	w, err := WindowCommand(cmd, []string{"tmux", "new-window"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"tmux", "new-window", "env", "KUBECONFIG=/kc", "k9s", "-n", "x"}
+	if !reflect.DeepEqual(w.Args, want) || !reflect.DeepEqual(w.Env, cmd.Env) {
+		t.Fatalf("args %q env %q", w.Args, w.Env)
+	}
+	if w.Stdin != nil || w.Stdout != nil || w.SysProcAttr == nil || !w.SysProcAttr.Setsid {
+		t.Fatal("window command must be detached")
+	}
+	if _, err := WindowCommand(cmd, nil); err == nil {
+		t.Fatal("expected error without terminal")
+	}
+}
+
+func TestDetectTerminal(t *testing.T) {
+	t.Setenv("TMUX", "/tmp/tmux-1/default,1,0")
+	if got := DetectTerminal(); !reflect.DeepEqual(got, []string{"tmux", "new-window"}) {
+		t.Fatalf("got %q", got)
+	}
+}

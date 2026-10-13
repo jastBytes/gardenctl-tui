@@ -34,6 +34,7 @@ func (a *App) helpGroups() []helpGroup {
 		binding("*", "toggle favorite"),
 		binding("ctrl+r", "recent & favorites"),
 		binding("p", "toggle provider-env"),
+		binding("w", "toggle new window"),
 		binding("r", "refresh"),
 		binding("a", "toggle auto-refresh"),
 		binding("?", "help"),

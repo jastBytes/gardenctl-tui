@@ -31,6 +31,13 @@ type GTUI struct {
 	RefreshInterval Duration `json:"refreshInterval"`
 	// ProviderEnv evaluates `gardenctl provider-env` in launched tools by default.
 	ProviderEnv bool `json:"providerEnv,omitempty"`
+	// NewWindow starts launched tools in a new terminal window by default
+	// instead of handing over gtui's terminal.
+	NewWindow bool `json:"newWindow,omitempty"`
+	// Terminal is the command prefix that opens a new window, e.g.
+	// ["tmux", "new-window"] or ["kitty", "--"]; the tool's argv is appended.
+	// Empty: detected from the environment.
+	Terminal []string `json:"terminal,omitempty"`
 	// Gardenctl is the gardenctl binary to call.
 	Gardenctl string `json:"gardenctl,omitempty"`
 }
@@ -117,7 +124,7 @@ func LoadGTUI(filename string) (*GTUI, error) {
 
 // reservedKeys are used by the UI and cannot be bound to tools.
 var reservedKeys = map[string]bool{
-	"q": true, "r": true, "a": true, "l": true, "h": true, "p": true,
+	"q": true, "r": true, "a": true, "l": true, "h": true, "p": true, "w": true,
 	"/": true, "?": true, "*": true,
 }
 
