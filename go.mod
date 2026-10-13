@@ -1,6 +1,6 @@
 module github.com/jastbytes/gardenctl-tui
 
-go 1.26.6
+go 1.26.9
 
 require (
 	github.com/charmbracelet/bubbles v1.0.0
@@ -13,7 +13,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/muesli/termenv v0.16.0
 	github.com/sahilm/fuzzy v0.1.3
-	golang.org/x/sys v0.47.0
+	golang.org/x/sys v0.48.0
 	k8s.io/apimachinery v0.36.4
 	k8s.io/client-go v0.36.4
 	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
@@ -68,10 +68,10 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/net v0.58.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect
-	golang.org/x/term v0.45.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
+	golang.org/x/term v0.46.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/protobuf v1.36.12-0.20260806062936-644d0267c26e // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
