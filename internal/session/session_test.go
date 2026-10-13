@@ -22,6 +22,7 @@ func TestParseKubeconfigExport(t *testing.T) {
 		"space in path":    {in: "export KUBECONFIG='/Users/A B/kc.yaml';", want: "/Users/A B/kc.yaml"},
 		"unquoted":         {in: "export KUBECONFIG=/tmp/kc.yaml", want: "/tmp/kc.yaml"},
 		"double quoted":    {in: `export KUBECONFIG="/tmp/k\"c.yaml";`, want: `/tmp/k"c.yaml`},
+		"double escapes":   {in: `export KUBECONFIG="/a\$b\x";`, want: `/a$b\x`},
 		"leading notice":   {in: "printf 'hello';\nexport KUBECONFIG='/x';\n", want: "/x"},
 		"missing":          {in: "unset KUBECONFIG;\n", err: true},
 		"unterminated":     {in: "export KUBECONFIG='/tmp/x;", err: true},

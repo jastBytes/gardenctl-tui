@@ -50,13 +50,16 @@ func unquotePOSIX(s string) (string, error) {
 		case '"':
 			j := i + 1
 			for ; j < len(s) && s[j] != '"'; j++ {
-				if s[j] == '\\' && j+1 < len(s) {
-					j++
-				}
-				if s[j] == '$' || s[j] == '`' {
+				c := s[j]
+				if c == '$' || c == '`' {
 					return "", errors.New("shell expansion is not supported")
 				}
-				b.WriteByte(s[j])
+				// In double quotes a backslash only escapes $ ` " \ (otherwise it is literal).
+				if c == '\\' && j+1 < len(s) && strings.IndexByte("$`\"\\", s[j+1]) >= 0 {
+					j++
+					c = s[j]
+				}
+				b.WriteByte(c)
 			}
 			if j >= len(s) {
 				return "", errors.New("unterminated double quote")

@@ -90,9 +90,6 @@ func run(args []string) error {
 		return err
 	}
 
-	restoreStderr := redirectStderr()
-	defer restoreStderr()
-
 	store, err := loadState(o.demo)
 	if err != nil {
 		return err
@@ -114,7 +111,10 @@ func run(args []string) error {
 	})
 	// No signal context here: a Ctrl+C inside a launched tool must not quit gtui.
 	// Bubble Tea handles signals itself and ignores them while a tool runs.
+	// Restore stderr right after the UI so that the messages below reach the terminal.
+	restoreStderr := redirectStderr()
 	_, err = tea.NewProgram(app, tea.WithAltScreen()).Run()
+	restoreStderr()
 	if serr := app.SaveLocation(); serr != nil {
 		fmt.Fprintln(os.Stderr, "gtui: saving the location failed:", serr)
 	}
