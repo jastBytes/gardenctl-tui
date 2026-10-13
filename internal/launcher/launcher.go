@@ -6,7 +6,11 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
+	"syscall"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/jastbytes/gardenctl-tui/internal/config"
 	"github.com/jastbytes/gardenctl-tui/internal/session"
@@ -127,5 +131,28 @@ func (e *Exec) Run() error {
 	if e.Banner != "" && e.Cmd.Stdout != nil {
 		fmt.Fprintln(e.Cmd.Stdout, e.Banner)
 	}
-	return e.Cmd.Run()
+	tty, ok := e.Cmd.Stdin.(*os.File)
+	if !ok {
+		return e.Cmd.Run()
+	}
+	fd := int(tty.Fd())
+	if _, err := unix.IoctlGetInt(fd, unix.TIOCGPGRP); err != nil {
+		return e.Cmd.Run() // not our controlling terminal
+	}
+	// Run the command as its own foreground job, like a shell does, so that
+	// Ctrl+Z/Ctrl+C or a signal to "its" process group cannot hit gtui.
+	e.Cmd.SysProcAttr = &syscall.SysProcAttr{Foreground: true, Ctty: fd}
+	// No shell is there to resume a stopped job, so the command inherits an
+	// ignored Ctrl+Z (interactive shells set up their own job control).
+	signal.Ignore(syscall.SIGTSTP)
+	err := e.Cmd.Run()
+	signal.Reset(syscall.SIGTSTP)
+	// Take the terminal back. gtui is a background process until then, so
+	// ignore SIGTTOU, which would otherwise stop it.
+	signal.Ignore(syscall.SIGTTOU)
+	defer signal.Reset(syscall.SIGTTOU)
+	if perr := unix.IoctlSetPointerInt(fd, unix.TIOCSPGRP, syscall.Getpgrp()); perr != nil && err == nil {
+		err = fmt.Errorf("reclaim terminal: %w", perr)
+	}
+	return err
 }
