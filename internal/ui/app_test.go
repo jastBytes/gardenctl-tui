@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -276,5 +277,27 @@ func TestLoadSuccessKeepsOtherErrors(t *testing.T) {
 	a.Update(loadedMsg{viewID: id, data: []gardener.Project{}})
 	if a.status != "k9s exited: exit status 1" {
 		t.Fatalf("tool error was cleared by the refresh, status %q", a.status)
+	}
+}
+
+func TestAllShootsView(t *testing.T) {
+	tm := startApp(t, testOptions(fake.Landscape()))
+	waitFor(t, tm, "live")
+	send(tm, "enter")
+	waitFor(t, tm, "garden-ops")
+	send(tm, "A")
+	waitFor(t, tm, "db")
+	snapshot(t, tm)
+}
+
+func TestSingleGardenStartsInProjects(t *testing.T) {
+	opts := testOptions(fake.Landscape())
+	opts.Gardens = opts.Gardens[:1]
+	tm := startApp(t, opts)
+	waitFor(t, tm, "garden-ops")
+	send(tm, "esc")
+	app := quitAndSave(t, tm)
+	if got := titles(app); !reflect.DeepEqual(got, []string{"gardens"}) {
+		t.Fatalf("stack after esc: %v", got)
 	}
 }

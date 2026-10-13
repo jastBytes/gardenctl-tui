@@ -53,15 +53,18 @@ func (v *projectsView) update(msg tea.Msg) tea.Cmd {
 }
 
 func (v *projectsView) hints() []hint {
-	return append(baseHints(), hint{"tab", "seeds"})
+	return append(baseHints(), hint{"tab", "seeds"}, hint{"A", "all shoots"})
 }
 
 func (v *projectsView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
 	if handled, cmd := v.tableKey(msg); handled {
 		return true, cmd
 	}
-	if msg.String() == "tab" {
+	switch msg.String() {
+	case "tab":
 		return true, push(newSeedsView(v.app, v.garden))
+	case "A":
+		return true, push(newGardenShootsView(v.app, v.garden))
 	}
 	r, ok := v.tbl.selected()
 	if !ok {
