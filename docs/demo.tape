@@ -27,7 +27,9 @@ Type "/" Sleep 300ms Type "web" Sleep 1s
 Enter Sleep 500ms
 Escape Sleep 500ms
 Escape Sleep 800ms
-Type "A" Sleep 2s
+Type "A" Sleep 1.5s
+Type "!" Sleep 2s
+Type "!" Sleep 800ms
 Escape Sleep 800ms
 Tab Sleep 1.5s
 Type "?" Sleep 2.5s
