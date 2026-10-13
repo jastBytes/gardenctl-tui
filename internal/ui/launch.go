@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -178,15 +179,39 @@ func (a *App) startTool(req launchReq, sess *session.Session) tea.Cmd {
 		a.busy = ""
 		return setStatus(err.Error(), true)
 	}
-	a.busy = fmt.Sprintf("running %s on %s", req.tool.Name, req.target)
 	var saveErr tea.Cmd
 	if err := a.state.AddRecent(req.target, req.tool.Name); err != nil {
 		saveErr = setStatus("saving recent targets failed: "+err.Error(), true)
 	}
+	if a.newWindow {
+		a.busy = ""
+		return tea.Batch(saveErr, a.startInWindow(req, sess, cmd))
+	}
+	a.busy = fmt.Sprintf("running %s on %s", req.tool.Name, req.target)
 	banner := fmt.Sprintf("gtui: %s on %s – exit to return to gtui", req.tool.Name, req.target)
 	return tea.Batch(saveErr, a.exec(&launcher.Exec{Cmd: cmd, Banner: banner}, func(err error) tea.Msg {
 		return toolExitedMsg{req: req, err: err}
 	}))
+}
+
+// startInWindow starts cmd in a new terminal window and returns right away;
+// gtui stays usable while the tool runs.
+func (a *App) startInWindow(req launchReq, sess *session.Session, cmd *exec.Cmd) tea.Cmd {
+	terminal := a.opts.Config.Terminal
+	if len(terminal) == 0 {
+		terminal = launcher.DetectTerminal()
+	}
+	w, err := launcher.WindowCommand(cmd, terminal)
+	if err != nil {
+		return setStatus(err.Error(), true)
+	}
+	if err := w.Start(); err != nil {
+		return setStatus(fmt.Sprintf("open window for %s: %v", req.tool.Name, err), true)
+	}
+	// The window may outlive gtui, so its session must survive the cleanup.
+	a.opts.Sessions.Keep(sess)
+	go func() { _ = w.Wait() }()
+	return setStatus(fmt.Sprintf("started %s on %s in a new window", req.tool.Name, req.target), false)
 }
 
 func (a *App) exec(c tea.ExecCommand, cb tea.ExecCallback) tea.Cmd {

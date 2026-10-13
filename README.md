@@ -3,7 +3,8 @@
 `gtui` lets you browse your Gardener landscapes (garden → project → shoot, or
 garden → seed → shoot), see the health of every shoot at a glance, and start a
 shell, `k9s`, `kubectl` or any other tool **already targeted at the selected
-cluster**. When the tool exits you are back in the TUI.
+cluster**. When the tool exits you are back in the TUI – or, if you prefer, the
+tool opens in a new terminal window and gtui stays usable.
 
 ![gtui demo](docs/demo.gif)
 
@@ -61,6 +62,7 @@ Flags: `--config` (gardenctl config file), `--gtui-config` (gtui config file),
 | `*` | toggle favorite |
 | `ctrl+r` | recent targets and favorites |
 | `p` | toggle provider-env (cloud provider CLI credentials) for launched tools |
+| `w` | toggle where tools start: this terminal or a new terminal window |
 | `r` | refresh, `a` toggles auto-refresh |
 | `?` | help |
 | `q`, `ctrl+c` | quit |
@@ -81,6 +83,8 @@ optional; these are the defaults:
 ```yaml
 refreshInterval: 30s     # "0" disables auto-refresh
 providerEnv: false       # start with provider-env enabled
+newWindow: false         # start tools in a new terminal window (toggle: w)
+terminal: []             # command that opens a window, e.g. [tmux, new-window]
 gardenctl: gardenctl     # gardenctl binary
 tools:
   - key: "s"
@@ -101,7 +105,31 @@ tools:
   `{shoot}`, `{namespace}` (the shoot's project namespace).
 - Each tool also gets a control-plane key, by default the upper-case key. Set
   `controlPlaneKey` to choose another one.
-- The keys `q r a l h p / ? *` are reserved.
+- The keys `q r a l h p w / ? *` are reserved.
+
+### Same terminal or new window
+
+By default a launched tool takes over gtui's terminal until it exits. Press `w`
+(or set `newWindow: true`) to start tools in a new terminal window instead;
+gtui stays usable and you can start further tools right away. Targeting
+(`gardenctl target`) still runs briefly in gtui's terminal, because it may ask
+for a confirmation.
+
+`terminal` is the command prefix that opens the window; the tool's command is
+appended. Without it gtui uses tmux (`tmux new-window`), zellij, kitty, WezTerm,
+Ghostty, Alacritty or gnome-terminal when it runs inside one of them, and
+otherwise `x-terminal-emulator -e`. Examples:
+
+```yaml
+terminal: [tmux, split-window, -h]        # a tmux pane instead of a window
+terminal: [kitty, "@", launch, --type=tab] # a kitty tab (needs allow_remote_control)
+terminal: [wezterm, cli, spawn, --]       # a WezTerm tab
+```
+
+The session environment (`KUBECONFIG`, `GCTL_SESSION_ID`, …) is passed through
+`env(1)`, so it also reaches terminals that reuse a running instance. Sessions of
+tools started in a window are not deleted when gtui exits, as the window may
+still use them.
 
 Recent targets and favorites are stored in `~/.garden/gtui-state.yaml`.
 
@@ -146,10 +174,12 @@ from the gardenctl configuration. Targeting is left to gardenctl:
    `bash -c 'eval "$(gardenctl provider-env bash)"; exec tool'`, because that
    output may run provider CLI logins and cannot be parsed safely.
 5. The tool runs with the terminal handed over (`tea.Exec`); afterwards the
-   current view is refreshed.
+   current view is refreshed. In new-window mode it is started detached in the
+   configured terminal instead.
 
 On exit gtui deletes the gardenctl session directories it created
-(`$TMPDIR/garden/sessions/<id>`), and only those. Details about the gardenctl
+(`$TMPDIR/garden/sessions/<id>`), and only those (except sessions of tools
+started in a new window). Details about the gardenctl
 internals gtui relies on are in [docs/gardenctl-notes.md](docs/gardenctl-notes.md).
 
 Credential plugins (e.g. OIDC via kubelogin) cannot read from the terminal while

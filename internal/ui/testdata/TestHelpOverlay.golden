@@ -3,7 +3,6 @@
                                                                                                     
                                                                                                     
                                                                                                     
-                                                                                                    
      ╭────────────────────────────────────────────────────────────────────────────────────────╮     
      │                                                                                        │     
      │  Navigation                   Actions                       Tools                      │     
@@ -11,10 +10,11 @@
      │  enter open / details         *      toggle favorite        S Shell (control plane)    │     
      │  esc/h back                   ctrl+r recent & favorites     k k9s                      │     
      │  /     filter (fuzzy)         p      toggle provider-env    K k9s (control plane)      │     
-     │  tab   seeds of the garden    r      refresh                c kubectl                  │     
-     │  g/G   first / last           a      toggle auto-refresh    C kubectl (control plane)  │     
-     │                               ?      help                   f sofka                    │     
-     │                               q      quit                   F sofka (control plane)    │     
+     │  tab   seeds of the garden    w      toggle new window      c kubectl                  │     
+     │  g/G   first / last           r      refresh                C kubectl (control plane)  │     
+     │                               a      toggle auto-refresh    f sofka                    │     
+     │                               ?      help                   F sofka (control plane)    │     
+     │                               q      quit                                              │     
      │                                                                                        │     
      │  Tool keys work on shoots, seeds, details and recent targets;                          │     
      │  in those views they win over j/k. Tools: ~/.garden/gtui.yaml                          │     

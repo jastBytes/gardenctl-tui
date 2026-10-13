@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/exp/teatest"
@@ -296,5 +297,50 @@ func TestGardenctlVersionWarning(t *testing.T) {
 	opts.Sessions = mgr
 	tm := startApp(t, opts)
 	waitFor(t, tm, "gardenctl not found")
+	_ = tm.Quit()
+}
+
+func TestLaunchInNewWindow(t *testing.T) {
+	e := newLaunchEnv(t)
+	// A "terminal" that just runs the tool, detached like a real one.
+	e.opts.Config.Terminal = []string{"sh", "-c", `exec "$@"`, "gtui-term"}
+	tm := startApp(t, e.opts)
+	openShoots(t, tm)
+	send(tm, "w")
+	waitFor(t, tm, "new terminal window")
+	send(tm, "x")
+	waitFor(t, tm, "started envdump on dev/alpha/api-gw in a new window")
+	_ = tm.Quit()
+
+	var line string
+	for i := 0; i < 100 && line == ""; i++ {
+		b, _ := os.ReadFile(e.out)
+		line = strings.TrimSpace(string(b))
+		time.Sleep(20 * time.Millisecond)
+	}
+	if !strings.Contains(line, "target=dev/alpha/api-gw args=dev/alpha/api-gw/garden-alpha") ||
+		strings.Contains(line, "parent-session") {
+		t.Fatalf("unexpected env: %q", line)
+	}
+	if strings.Contains(e.rec.String(), "gtui: envdump on") {
+		t.Fatal("tool must not run in gtui's terminal")
+	}
+	sid := strings.TrimPrefix(strings.Fields(line)[0], "sid=")
+	if err := e.mgr.Cleanup(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(e.tmp, "garden", "sessions", sid)); err != nil {
+		t.Fatalf("session of the window must survive cleanup: %v", err)
+	}
+}
+
+func TestLaunchInNewWindowWithoutTerminal(t *testing.T) {
+	e := newLaunchEnv(t)
+	e.opts.Config.NewWindow = true
+	e.opts.Config.Terminal = []string{"/nonexistent/terminal"}
+	tm := startApp(t, e.opts)
+	openShoots(t, tm)
+	send(tm, "x")
+	waitFor(t, tm, "open window for envdump")
 	_ = tm.Quit()
 }
