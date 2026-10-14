@@ -42,7 +42,7 @@ func advanceDemo(c *fake.Client) {
 			s.Status = gardener.StatusHealthy
 			conds[3].Status, conds[3].Reason, conds[3].Message = "True", "EveryNodeReady", ""
 		default:
-			s.LastOp.Progress += 3
+			s.LastOp.Progress++
 		}
 		s.LastOp.Updated = time.Now()
 		s.Conditions = conds
