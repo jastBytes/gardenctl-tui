@@ -1,8 +1,8 @@
  gtui  gardens › dev                                                               auto-refresh off 
-   PROJECT  NAMESPACE     PHASE  OWNER              PURPOSE                                         
- ▸ alpha    garden-alpha  Ready  alice@example.com  Team Alpha                                      
-   beta     garden-beta   Ready  bob@example.com    Team Beta                                       
-   ops      garden-ops    Ready  ops@example.com                                                    
+   PROJECT  NAMESPACE     PHASE  SHOOTS  OWNER              PURPOSE                                 
+ ▸ alpha    garden-alpha  Ready  3 ⟳1    alice@example.com  Team Alpha                              
+   beta     garden-beta   Ready  1 ✗1    bob@example.com    Team Beta                               
+   ops      garden-ops    Ready  1       ops@example.com                                            
                                                                                                     
                                                                                                     
                                                                                                     

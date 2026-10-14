@@ -4,6 +4,8 @@ import (
 	"context"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/jastbytes/gardenctl-tui/internal/config"
 	"github.com/jastbytes/gardenctl-tui/internal/gardener"
@@ -13,12 +15,22 @@ import (
 type projectsView struct {
 	listBase
 	garden config.Garden
+	// noShoots is set when listing all shoots is forbidden; the shoot counts stay empty.
+	noShoots bool
+}
+
+// projectsData is the result of a projects load.
+type projectsData struct {
+	projects []gardener.Project
+	// shoots by project namespace; nil if they could not be listed.
+	shoots    map[string][]gardener.Shoot
+	forbidden bool
 }
 
 func newProjectsView(a *App, g config.Garden) *projectsView {
 	return &projectsView{
 		listBase: newListBase(a,
-			column{title: "Project"}, column{title: "Namespace"}, column{title: "Phase"},
+			column{title: "Project"}, column{title: "Namespace"}, column{title: "Phase"}, column{title: "Shoots"},
 			column{title: "Owner", max: 40}, column{title: "Purpose", max: 50}),
 		garden: g,
 	}
@@ -28,13 +40,32 @@ func (v *projectsView) title() string { return v.garden.Name }
 func (v *projectsView) init() tea.Cmd { return v.refresh() }
 
 func (v *projectsView) refresh() tea.Cmd {
-	g := v.garden
+	g, withShoots := v.garden, !v.noShoots
 	return v.startLoad(load(v.vid, func(ctx context.Context) (any, error) {
 		c, err := v.app.clients.get(g)
 		if err != nil {
 			return nil, err
 		}
-		return c.ListProjects(ctx)
+		projects, err := c.ListProjects(ctx)
+		if err != nil {
+			return nil, err
+		}
+		data := projectsData{projects: projects}
+		if !withShoots {
+			return data, nil
+		}
+		// The shoot counts are optional: users without cluster-wide read
+		// access still get the project list.
+		shoots, err := c.ListShoots(ctx, "")
+		if err != nil {
+			data.forbidden = apierrors.IsForbidden(err)
+			return data, nil
+		}
+		data.shoots = map[string][]gardener.Shoot{}
+		for _, s := range shoots {
+			data.shoots[s.Namespace] = append(data.shoots[s.Namespace], s)
+		}
+		return data, nil
 	}))
 }
 
@@ -43,10 +74,23 @@ func (v *projectsView) update(msg tea.Msg) tea.Cmd {
 	if !ok || !v.finishLoad(m) {
 		return nil
 	}
-	projects := m.data.([]gardener.Project)
-	rows := make([]row, 0, len(projects))
-	for _, p := range projects {
-		rows = append(rows, row{key: p.Name, cells: []string{p.Name, p.Namespace, p.Phase, p.Owner, p.Purpose}, data: p})
+	data := m.data.(projectsData)
+	if data.forbidden {
+		v.noShoots = true
+	}
+	rows := make([]row, 0, len(data.projects))
+	for _, p := range data.projects {
+		var count string
+		var color lipgloss.TerminalColor
+		if data.shoots != nil {
+			count, color = shootCountCell(data.shoots[p.Namespace])
+		}
+		rows = append(rows, row{
+			key:    p.Name,
+			cells:  []string{p.Name, p.Namespace, p.Phase, count, p.Owner, p.Purpose},
+			colors: []lipgloss.TerminalColor{nil, nil, nil, color},
+			data:   p,
+		})
 	}
 	v.tbl.setRows(rows)
 	return v.app.applyRestore(v.vid, v.tbl, v.open)

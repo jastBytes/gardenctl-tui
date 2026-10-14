@@ -40,7 +40,7 @@ func (v *detailView) capturing() bool { return false }
 func (v *detailView) isLoading() bool { return v.loading }
 func (v *detailView) init() tea.Cmd   { return nil }
 func (v *detailView) hints() []hint {
-	return append(toolHints(v.app), hint{"enter", "launch…"}, hint{"*", "favorite"}, hint{"↑/↓", "scroll"}, hint{"esc", "back"})
+	return append(toolHints(v.app), hint{"enter", "launch…"}, hint{"v", "yaml"}, hint{"y", "copy"}, hint{"*", "favorite"}, hint{"esc", "back"})
 }
 
 func (v *detailView) refresh() tea.Cmd {
@@ -74,6 +74,10 @@ func (v *detailView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
 		return true, push(newMenuView(v.app, v.target))
 	case "*":
 		return true, v.app.toggleFavorite(v.target)
+	case "y":
+		return true, push(newYankView(v.app, v.target, v.shoot.TechnicalID))
+	case "v":
+		return true, push(newYAMLView(v.app, v.garden, v.shoot))
 	case "up", "k", "down", "j", "pgup", "pgdown", "ctrl+u", "ctrl+d", "home", "end", "g", "G":
 		switch msg.String() {
 		case "g", "home":

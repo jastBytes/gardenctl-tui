@@ -10,6 +10,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 
 	"github.com/jastbytes/gardenctl-tui/internal/config"
 )
@@ -25,6 +26,8 @@ type Client interface {
 	ListShootsOnSeed(ctx context.Context, seed string) ([]Shoot, error)
 	ListSeeds(ctx context.Context) ([]Seed, error)
 	GetShoot(ctx context.Context, namespace, name string) (*Shoot, error)
+	// GetShootYAML returns the shoot manifest as YAML (without managed fields).
+	GetShootYAML(ctx context.Context, namespace, name string) ([]byte, error)
 }
 
 // Scheme contains the Gardener core API types.
@@ -127,4 +130,17 @@ func (c *crClient) GetShoot(ctx context.Context, namespace, name string) (*Shoot
 	}
 	out := ShootFromAPI(&s)
 	return &out, nil
+}
+
+func (c *crClient) GetShootYAML(ctx context.Context, namespace, name string) ([]byte, error) {
+	var s gardencorev1beta1.Shoot
+	if err := c.c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, &s); err != nil {
+		return nil, fmt.Errorf("get shoot %s/%s: %w", namespace, name, err)
+	}
+	// The typed client drops TypeMeta; managed fields and the last applied
+	// configuration only add noise.
+	s.APIVersion, s.Kind = gardencorev1beta1.SchemeGroupVersion.String(), "Shoot"
+	s.ManagedFields = nil
+	delete(s.Annotations, "kubectl.kubernetes.io/last-applied-configuration")
+	return yaml.Marshal(&s)
 }

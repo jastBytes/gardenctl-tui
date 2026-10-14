@@ -59,6 +59,8 @@ type Options struct {
 	Available func(config.Tool) bool
 	// State stores recent targets and favorites (default: in memory only).
 	State *state.Store
+	// Copy puts text into the clipboard (default: system clipboard and OSC 52).
+	Copy func(string) error
 }
 
 // App is the root model: navigation stack, status line and auto-refresh.
@@ -86,6 +88,8 @@ type App struct {
 	newWindow bool
 	// problemsOnly hides healthy and hibernated shoots in the shoot lists.
 	problemsOnly bool
+	// sortBy is the order of the shoot lists.
+	sortBy sortMode
 
 	state    *state.Store
 	showHelp bool
@@ -102,6 +106,9 @@ func New(opts Options) *App {
 	}
 	if opts.Now == nil {
 		opts.Now = time.Now
+	}
+	if opts.Copy == nil {
+		opts.Copy = copyToClipboard
 	}
 	sp := spinner.New()
 	sp.Spinner = spinner.MiniDot
@@ -311,6 +318,9 @@ func (a *App) breadcrumb(width int) string {
 	}
 	if a.problemsOnly {
 		right = styles.Info.Render("problems only") + "  " + right
+	}
+	if a.sortBy != sortName {
+		right = styles.Info.Render("sort: "+a.sortBy.String()) + "  " + right
 	}
 	if a.providerEnv {
 		right = styles.Info.Render("provider-env") + "  " + right

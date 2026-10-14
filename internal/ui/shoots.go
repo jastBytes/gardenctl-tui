@@ -92,7 +92,7 @@ func (v *shootsView) update(msg tea.Msg) tea.Cmd {
 
 func (v *shootsView) rebuild() {
 	rows := make([]row, 0, len(v.shoots))
-	for _, s := range v.shoots {
+	for _, s := range sortShoots(v.shoots, v.app.sortBy) {
 		if v.app.problemsOnly && (s.Status == gardener.StatusHealthy || s.Status == gardener.StatusHibernated) {
 			continue
 		}
@@ -143,14 +143,15 @@ func (v *shootsView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
 	if handled, cmd := v.tableKey(msg); handled {
 		return true, cmd
 	}
-	if msg.String() == "!" {
+	switch msg.String() {
+	case "!":
 		v.app.problemsOnly = !v.app.problemsOnly
-		for _, sv := range v.app.stack {
-			if sv, ok := sv.(*shootsView); ok {
-				sv.rebuild()
-			}
-		}
+		v.app.rebuildShootViews()
 		return true, nil
+	case "o":
+		v.app.sortBy = (v.app.sortBy + 1) % sortModes
+		v.app.rebuildShootViews()
+		return true, setStatus(v.app.sortBy.describe(), false)
 	}
 	r, ok := v.tbl.selected()
 	if !ok {
@@ -162,6 +163,10 @@ func (v *shootsView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
 		return true, push(newDetailView(v.app, v.garden, s, v.target(s)))
 	case "l":
 		return true, push(newMenuView(v.app, v.target(s)))
+	case "y":
+		return true, push(newYankView(v.app, v.target(s), s.TechnicalID))
+	case "v":
+		return true, push(newYAMLView(v.app, v.garden, s))
 	case "*":
 		cmd := v.app.toggleFavorite(v.target(s))
 		v.rebuild()
@@ -182,4 +187,19 @@ func toolHints(a *App) []hint {
 	return []hint{{strings.Join(keys, "/"), "tools"}}
 }
 
-func (v *shootsView) render(width, height int) string { return v.renderTable(width, height) }
+// rebuildShootViews applies changed list options (filter, order) to all shoot lists.
+func (a *App) rebuildShootViews() {
+	for _, sv := range a.stack {
+		if sv, ok := sv.(*shootsView); ok {
+			sv.rebuild()
+		}
+	}
+}
+
+func (v *shootsView) render(width, height int) string {
+	if !v.loaded {
+		return v.renderTable(width, height)
+	}
+	hidden := len(v.shoots) - len(v.tbl.all)
+	return shootSummary(v.shoots, hidden) + "\n" + v.renderTable(width, height-1)
+}

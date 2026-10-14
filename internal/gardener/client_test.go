@@ -2,6 +2,7 @@ package gardener
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -112,6 +113,22 @@ func TestClient(t *testing.T) {
 		t.Fatalf("shoot: %+v", got)
 	}
 	if _, err := c.GetShoot(ctx, "garden-a-proj", "missing"); err == nil {
+		t.Fatal("expected not found")
+	}
+
+	manifest, err := c.GetShootYAML(ctx, "garden-a-proj", "s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"apiVersion: core.gardener.cloud/v1beta1", "kind: Shoot", "name: s1", "technicalID: shoot--a-proj--s1"} {
+		if !strings.Contains(string(manifest), want) {
+			t.Fatalf("yaml lacks %q:\n%s", want, manifest)
+		}
+	}
+	if strings.Contains(string(manifest), "managedFields") {
+		t.Fatalf("yaml contains managed fields:\n%s", manifest)
+	}
+	if _, err := c.GetShootYAML(ctx, "garden-a-proj", "missing"); err == nil {
 		t.Fatal("expected not found")
 	}
 }

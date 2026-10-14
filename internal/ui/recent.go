@@ -74,6 +74,8 @@ func (v *recentView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
 			return true, cmd
 		case "enter", "l":
 			return true, push(newMenuView(v.app, t))
+		case "y":
+			return true, push(newYankView(v.app, t, ""))
 		}
 	}
 	return v.tableKey(msg)

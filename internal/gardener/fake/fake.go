@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"sigs.k8s.io/yaml"
+
 	"github.com/jastbytes/gardenctl-tui/internal/gardener"
 )
 
@@ -19,6 +21,8 @@ type Client struct {
 	Shoots   []gardener.Shoot
 	// Err, if set, is returned by every call.
 	Err error
+	// MethodErr, if set for a method name, is returned by that method.
+	MethodErr map[string]error
 	// Delay is applied to every call (demo mode).
 	Delay time.Duration
 	// Calls counts calls per method name.
@@ -34,6 +38,9 @@ func (c *Client) enter(ctx context.Context, method string) error {
 	}
 	c.Calls[method]++
 	err, delay := c.Err, c.Delay
+	if e := c.MethodErr[method]; e != nil {
+		err = e
+	}
 	c.mu.Unlock()
 	if delay > 0 {
 		select {
@@ -88,6 +95,33 @@ func (c *Client) GetShoot(ctx context.Context, namespace, name string) (*gardene
 		if s.Namespace == namespace && s.Name == name {
 			return &s, nil
 		}
+	}
+	return nil, fmt.Errorf("shoot %s/%s not found", namespace, name)
+}
+
+// GetShootYAML renders a small manifest from the view model.
+func (c *Client) GetShootYAML(ctx context.Context, namespace, name string) ([]byte, error) {
+	if err := c.enter(ctx, "GetShootYAML"); err != nil {
+		return nil, err
+	}
+	for _, s := range c.Shoots {
+		if s.Namespace != namespace || s.Name != name {
+			continue
+		}
+		m := map[string]any{
+			"apiVersion": "core.gardener.cloud/v1beta1",
+			"kind":       "Shoot",
+			"metadata":   map[string]any{"name": s.Name, "namespace": s.Namespace},
+			"spec": map[string]any{
+				"kubernetes": map[string]any{"version": s.Version},
+				"provider":   map[string]any{"type": s.Provider},
+				"purpose":    s.Purpose,
+				"region":     s.Region,
+				"seedName":   s.Seed,
+			},
+			"status": map[string]any{"isHibernated": s.Hibernated, "technicalID": s.TechnicalID},
+		}
+		return yaml.Marshal(m)
 	}
 	return nil, fmt.Errorf("shoot %s/%s not found", namespace, name)
 }

@@ -62,6 +62,9 @@ Flags: `--config` (gardenctl config file), `--gtui-config` (gtui config file),
 | `S` `K` `C` `F` | the same on the shoot's **control plane** (seed namespace) |
 | `*` | toggle favorite |
 | `!` | shoot lists: show only shoots with problems (red or yellow) |
+| `o` | shoot lists: sort by name, status (problems first), Kubernetes version (oldest first) or last operation (newest first) |
+| `y` | copy the name, path, `gardenctl target` command or technical ID |
+| `v` | the shoot's YAML manifest (`y` there copies it) |
 | `ctrl+r` | recent targets and favorites |
 | `p` | toggle provider-env (cloud provider CLI credentials) for launched tools |
 | `w` | toggle where tools start: this terminal or a new terminal window |
@@ -72,6 +75,16 @@ Flags: `--config` (gardenctl config file), `--gtui-config` (gtui config file),
 Tool keys are active in the shoot list, the seed list, the shoot details and
 the recent list. A tool bound to a vim key (`j`, `k`, `g`, `G`) takes
 precedence over it there; use the arrow keys to move then.
+
+Shoot lists start with a summary (`5 shoots  ● 1 error  ● 2 healthy …`), and
+the project list shows the number of shoots per project with the problems
+(`3 ✗1 ⟳1`: one red, one yellow), colored with the worst status. The counts
+need permission to list shoots in all namespaces; without it the column stays
+empty.
+
+Copying uses the system clipboard (`pbcopy`, `wl-copy`, `xclip`/`xsel`) when
+available and also sends the text to the terminal as an OSC 52 sequence, which
+works over SSH. In tmux this needs `set -g set-clipboard on`.
 
 Status colors: green = all conditions `True`, yellow = an operation is running
 or a condition is `Progressing`/`Unknown`, red = failed operation, errors or a
@@ -112,7 +125,7 @@ tools:
   `{shoot}`, `{namespace}` (the shoot's project namespace).
 - Each tool also gets a control-plane key, by default the upper-case key. Set
   `controlPlaneKey` to choose another one.
-- The keys `q r a l h p w / ? * !` are reserved.
+- The keys `q r a l h p w o v y / ? * !` are reserved.
 - With `rememberLocation: true`, gtui saves where you were when you quit
   (garden, project or seed, shoot list or shoot details, and the selected row)
   and opens that view again on the next start. If an item no longer exists,
