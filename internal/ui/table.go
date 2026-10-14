@@ -26,6 +26,8 @@ type row struct {
 	colors []lipgloss.TerminalColor
 	// data is the underlying item.
 	data any
+	// changed marks a row whose status changed recently.
+	changed bool
 }
 
 // table is a scrollable, fuzzy-filterable table with a cursor.
@@ -257,8 +259,11 @@ func (t *table) view(width, height int) string {
 			cells[c] = cell(text, w[c], st)
 		}
 		sep, marker := "  ", "  "
-		if i == t.cursor {
+		switch {
+		case i == t.cursor:
 			sep, marker = base.Render(sep), styles.Cursor.Render("▸ ")
+		case r.changed:
+			marker = styles.Changed.Render("▮ ")
 		}
 		b.WriteString("\n")
 		b.WriteString(marker + strings.Join(cells, sep))

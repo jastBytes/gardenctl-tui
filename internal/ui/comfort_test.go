@@ -52,7 +52,7 @@ func TestFavoritesAndRecent(t *testing.T) {
 	send(tm, "down", "*")
 	waitFor(t, tm, "★ batch")
 	send(tm, "ctrl+r")
-	waitFor(t, tm, "dev/beta/db")
+	waitFor(t, tm, "● Error") // status of dev/beta/db
 	app := snapshot(t, tm)
 	if _, ok := app.top().(*recentView); !ok {
 		t.Fatalf("top = %T", app.top())
@@ -68,7 +68,7 @@ func TestRecentViewEmpty(t *testing.T) {
 	tm := startApp(t, testOptions(fake.Landscape()))
 	waitFor(t, tm, "live")
 	send(tm, "ctrl+r")
-	waitFor(t, tm, "No recent targets yet")
+	waitFor(t, tm, "No favorites or recent targets yet")
 	_ = tm.Quit()
 }
 

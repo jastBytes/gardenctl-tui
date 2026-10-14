@@ -65,7 +65,7 @@ Flags: `--config` (gardenctl config file), `--gtui-config` (gtui config file),
 | `o` | shoot lists: sort by name, status (problems first), Kubernetes version (oldest first) or last operation (newest first) |
 | `y` | copy the name, path, `gardenctl target` command or technical ID |
 | `v` | the shoot's YAML manifest (`y` there copies it) |
-| `ctrl+r` | recent targets and favorites |
+| `ctrl+r` | favorites (with live status) and recent targets |
 | `p` | toggle provider-env (cloud provider CLI credentials) for launched tools |
 | `w` | toggle where tools start: this terminal or a new terminal window |
 | `r` | refresh, `a` toggles auto-refresh |
@@ -81,6 +81,23 @@ the project list shows the number of shoots per project with the problems
 (`3 ✗1 ⟳1`: one red, one yellow), colored with the worst status. The counts
 need permission to list shoots in all namespaces; without it the column stays
 empty.
+
+Running operations show their progress (`Reconcile 63% ▰▰▰▰▰▱▱▱`), and
+`Updated` says how long ago the last operation changed. A row whose status
+just changed is marked with `▮` for ten seconds.
+
+### Favorites
+
+Mark shoots with `*`; `ctrl+r` lists them with their live status, together
+with your recent targets. While gtui runs, it watches the project namespaces
+of your favorites (no cluster-wide permissions needed). When a favorite turns
+red, gtui says so in the status line and rings the terminal bell; with
+`notify: [bell, desktop]` you also get a desktop notification (`notify-send`
+on Linux, `osascript` on macOS), `notify: []` turns both off. A favorite that
+recovers is reported in the status line. With `favoritesOnStart: true` gtui
+opens the favorites view on start. Without watches (`watch: false`) the
+favorites view reloads every `refreshInterval` while it is open, and there are
+no notifications.
 
 Copying uses the system clipboard (`pbcopy`, `wl-copy`, `xclip`/`xsel`) when
 available and also sends the text to the terminal as an OSC 52 sequence, which
@@ -98,6 +115,8 @@ optional; these are the defaults:
 ```yaml
 refreshInterval: 5s      # "0" disables auto-refresh
 watch: true              # keep shoot lists up to date with watches
+notify: [bell]           # when a favorite turns red: bell and/or desktop
+favoritesOnStart: false  # open the favorites view on start
 providerEnv: false       # start with provider-env enabled
 newWindow: false         # start tools in a new terminal window (toggle: w)
 terminal: []             # command that opens a window, e.g. [tmux, new-window]

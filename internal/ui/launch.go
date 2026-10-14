@@ -164,9 +164,9 @@ func (a *App) toggleFavorite(t session.Target) tea.Cmd {
 	case err != nil:
 		return setStatus("saving favorites failed: "+err.Error(), true)
 	case on:
-		return setStatus("★ "+t.String()+" added to favorites (ctrl+r)", false)
+		return tea.Batch(setStatus("★ "+t.String()+" added to favorites (ctrl+r)", false), a.syncMonitor())
 	default:
-		return setStatus(t.String()+" removed from favorites", false)
+		return tea.Batch(setStatus(t.String()+" removed from favorites", false), a.syncMonitor())
 	}
 }
 

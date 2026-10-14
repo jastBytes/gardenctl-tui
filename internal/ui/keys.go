@@ -37,7 +37,7 @@ func (a *App) helpGroups() []helpGroup {
 		binding("o", "sort shoots"),
 		binding("y", "copy name, path, …"),
 		binding("v", "shoot YAML"),
-		binding("ctrl+r", "recent & favorites"),
+		binding("ctrl+r", "favorites & recent"),
 		binding("p", "toggle provider-env"),
 		binding("w", "toggle new window"),
 		binding("r", "refresh"),

@@ -45,7 +45,18 @@ type GTUI struct {
 	// Watch keeps the shoot lists up to date with watches instead of
 	// reloading them every RefreshInterval.
 	Watch bool `json:"watch"`
+	// Notify says how gtui reports a favorite shoot that turns red:
+	// "bell" (terminal bell) and/or "desktop" (notify-send / osascript).
+	Notify []string `json:"notify"`
+	// FavoritesOnStart opens the favorites view on start (if there are favorites).
+	FavoritesOnStart bool `json:"favoritesOnStart,omitempty"`
 }
+
+// Notification kinds for Notify.
+const (
+	NotifyBell    = "bell"
+	NotifyDesktop = "desktop"
+)
 
 // Duration is a time.Duration that (un)marshals as a string like "30s".
 type Duration struct{ time.Duration }
@@ -91,6 +102,7 @@ func DefaultGTUI() *GTUI {
 		RefreshInterval: Duration{5 * time.Second},
 		Gardenctl:       "gardenctl",
 		Watch:           true,
+		Notify:          []string{NotifyBell},
 	}
 }
 
@@ -136,6 +148,11 @@ var reservedKeys = map[string]bool{
 }
 
 func (c *GTUI) validate() error {
+	for _, n := range c.Notify {
+		if n != NotifyBell && n != NotifyDesktop {
+			return fmt.Errorf("notify: unknown kind %q (bell, desktop)", n)
+		}
+	}
 	seen := map[string]string{}
 	for i := range c.Tools {
 		c.Tools[i].ControlPlaneKey = c.Tools[i].CPKey()

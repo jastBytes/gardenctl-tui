@@ -10,7 +10,7 @@
   │  /     filter (fuzzy)              o      sort shoots            K k9s (control plane)      │   
   │  tab   seeds of the garden         y      copy name, path, …     c kubectl                  │   
   │  A     all shoots of the garden    v      shoot YAML             C kubectl (control plane)  │   
-  │  g/G   first / last                ctrl+r recent & favorites     f sofka                    │   
+  │  g/G   first / last                ctrl+r favorites & recent     f sofka                    │   
   │                                    p      toggle provider-env    F sofka (control plane)    │   
   │                                    w      toggle new window                                 │   
   │                                    r      refresh                                           │   
