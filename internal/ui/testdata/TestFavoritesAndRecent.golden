@@ -1,7 +1,7 @@
- gtui  gardens › dev › alpha › recent                                              auto-refresh off 
-      TARGET           LAST TOOL  USED                                                              
- ▸ ★  dev/alpha/batch                                                                               
-      dev/beta/db      k9s        just now                                                          
+ gtui  gardens › dev › alpha › favorites                                           auto-refresh off 
+      TARGET           STATUS        LAST OPERATION         UPDATED  LAST TOOL  USED                
+ ▸ ★  dev/alpha/batch  ● Hibernated  Reconcile Succeeded    3h                                      
+      dev/beta/db      ● Error       Reconcile Error (89%)  3h       k9s        just now            
                                                                                                     
                                                                                                     
                                                                                                     
@@ -14,4 +14,4 @@
                                                                                                     
                                                                                                     
                                                                                                     
- s/9/c/f tools · enter launch… · * favorite · esc back · ? help · q quit                            
+ s/9/c/f tools · enter launch… · * favorite · y copy · esc back · ? help · q quit                   

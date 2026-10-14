@@ -126,9 +126,12 @@ func TestWatchOption(t *testing.T) {
 	if err != nil || !cfg.Watch {
 		t.Fatalf("watch should default to true: %v %+v", err, cfg)
 	}
-	cfg, err = LoadGTUI(write(t, dir, "off.yaml", "watch: false\n"))
-	if err != nil || cfg.Watch {
-		t.Fatalf("watch: false not applied: %v %+v", err, cfg)
+	if len(cfg.Notify) != 1 || cfg.Notify[0] != NotifyBell {
+		t.Fatalf("notify should default to the bell: %v", cfg.Notify)
+	}
+	cfg, err = LoadGTUI(write(t, dir, "off.yaml", "watch: false\nnotify: []\nfavoritesOnStart: true\n"))
+	if err != nil || cfg.Watch || len(cfg.Notify) != 0 || !cfg.FavoritesOnStart {
+		t.Fatalf("options not applied: %v %+v", err, cfg)
 	}
 }
 
@@ -139,6 +142,7 @@ func TestLoadGTUIValidation(t *testing.T) {
 		"cp-dup":    "tools:\n- {key: a, name: a, command: [a]}\n- {key: A, name: b, command: [b]}\n",
 		"nocommand": "tools:\n- {key: a, name: a}\n",
 		"badDur":    "refreshInterval: soon\n",
+		"badNotify": "notify: [email]\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			p := write(t, t.TempDir(), "gtui.yaml", content)

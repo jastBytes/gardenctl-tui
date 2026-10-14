@@ -64,6 +64,8 @@ type Options struct {
 	Copy func(string) error
 	// WatchOptions tune the shoot watches (tests use short intervals).
 	WatchOptions gardener.WatchOptions
+	// Notify reports a favorite shoot that turned red (default: as configured in Notify).
+	Notify func(title, body string)
 }
 
 // App is the root model: navigation stack, status line and auto-refresh.
@@ -96,6 +98,8 @@ type App struct {
 
 	state    *state.Store
 	showHelp bool
+	// mon follows the favorite shoots.
+	mon *monitor
 
 	// restore is the remaining remembered path; restoreView waits for its rows.
 	restore     []state.Crumb
@@ -112,6 +116,9 @@ func New(opts Options) *App {
 	}
 	if opts.Copy == nil {
 		opts.Copy = copyToClipboard
+	}
+	if opts.Notify == nil {
+		opts.Notify = notifier(opts.Config.Notify)
 	}
 	sp := spinner.New()
 	sp.Spinner = spinner.MiniDot
@@ -130,11 +137,15 @@ func New(opts Options) *App {
 		providerEnv: opts.Config.ProviderEnv,
 		newWindow:   opts.Config.NewWindow,
 	}
+	a.mon = newMonitor(a.newID())
 	a.stack = []view{newGardensView(a)}
 	a.startRestore()
 	// A single garden needs no choice; esc still leads back to the gardens list.
 	if len(a.restore) == 0 && len(opts.Gardens) == 1 {
 		a.stack = append(a.stack, newProjectsView(a, opts.Gardens[0]))
+	}
+	if len(a.restore) == 0 && opts.Config.FavoritesOnStart && len(st.Favorites()) > 0 {
+		a.stack = append(a.stack, newRecentView(a))
 	}
 	return a
 }
@@ -147,7 +158,7 @@ func (a *App) newID() int {
 func (a *App) top() view { return a.stack[len(a.stack)-1] }
 
 func (a *App) Init() tea.Cmd {
-	return tea.Batch(a.top().init(), a.spinner.Tick, a.scheduleTick(), a.checkVersion())
+	return tea.Batch(a.top().init(), a.spinner.Tick, a.scheduleTick(), a.checkVersion(), a.syncMonitor())
 }
 
 func (a *App) scheduleTick() tea.Cmd {
@@ -190,6 +201,14 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.popView()
 		return a, nil
 
+	case rebuildMsg:
+		for _, v := range a.stack {
+			if r, ok := v.(rebuilder); ok && v.id() == msg.viewID {
+				r.rebuild()
+			}
+		}
+		return a, nil
+
 	case pushMsg:
 		a.stack = append(a.stack, msg.v)
 		a.status = ""
@@ -197,6 +216,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, msg.v.init()
 
 	case loadedMsg:
+		if msg.viewID == a.mon.id {
+			return a, a.monitorUpdate(msg)
+		}
 		for _, v := range a.stack {
 			if v.id() == msg.viewID {
 				if msg.err != nil {

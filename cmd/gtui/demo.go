@@ -10,6 +10,10 @@ import (
 func demoLandscape() *fake.Client {
 	c := fake.Landscape()
 	c.Delay = 300 * time.Millisecond
+	// The fake uses fixed timestamps; recent ones look more realistic.
+	for i := range c.Shoots {
+		c.Shoots[i].LastOp.Updated = time.Now().Add(-time.Duration(i+1) * 47 * time.Minute)
+	}
 	go func() {
 		for range time.Tick(600 * time.Millisecond) {
 			c.Update(advanceDemo)

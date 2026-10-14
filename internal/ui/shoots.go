@@ -25,32 +25,44 @@ type shootsView struct {
 	watch *shootWatch
 	// pending holds the latest watched list while auto-refresh is paused.
 	pending []gardener.Shoot
+	changes *changeTracker
+}
+
+// shootColumns are the columns of a shoot list; second is "Seed" or "Project",
+// all-shoots lists show both.
+func shootColumns(second ...string) []column {
+	cols := []column{{title: "Shoot"}}
+	for _, s := range second {
+		cols = append(cols, column{title: s})
+	}
+	return append(cols, column{title: "Version"}, column{title: "Status"},
+		column{title: "Last Operation", max: 40}, column{title: "Updated"}, column{title: "Purpose"})
 }
 
 func newProjectShootsView(a *App, g config.Garden, p gardener.Project) *shootsView {
 	return &shootsView{
-		listBase: newListBase(a, column{title: "Shoot"}, column{title: "Seed"}, column{title: "Version"},
-			column{title: "Status"}, column{title: "Last Operation", max: 40}, column{title: "Purpose"}),
-		garden:  g,
-		project: &p,
+		listBase: newListBase(a, shootColumns("Seed")...),
+		garden:   g,
+		project:  &p,
+		changes:  newChangeTracker(),
 	}
 }
 
 func newSeedShootsView(a *App, g config.Garden, seed string) *shootsView {
 	return &shootsView{
-		listBase: newListBase(a, column{title: "Shoot"}, column{title: "Project"}, column{title: "Version"},
-			column{title: "Status"}, column{title: "Last Operation", max: 40}, column{title: "Purpose"}),
-		garden: g,
-		seed:   seed,
+		listBase: newListBase(a, shootColumns("Project")...),
+		garden:   g,
+		seed:     seed,
+		changes:  newChangeTracker(),
 	}
 }
 
 // newGardenShootsView lists all shoots of the garden (neither project nor seed set).
 func newGardenShootsView(a *App, g config.Garden) *shootsView {
 	return &shootsView{
-		listBase: newListBase(a, column{title: "Shoot"}, column{title: "Project"}, column{title: "Seed"}, column{title: "Version"},
-			column{title: "Status"}, column{title: "Last Operation", max: 40}, column{title: "Purpose"}),
-		garden: g,
+		listBase: newListBase(a, shootColumns("Project", "Seed")...),
+		garden:   g,
+		changes:  newChangeTracker(),
 	}
 }
 
@@ -90,8 +102,9 @@ func (v *shootsView) refresh() tea.Cmd {
 	if v.watch != nil {
 		// Watched lists are current; only show what arrived while paused.
 		if v.pending != nil {
-			v.shoots, v.pending = v.pending, nil
+			cmd := v.setShoots(v.pending)
 			v.rebuild()
+			return cmd
 		}
 		return nil
 	}
@@ -135,13 +148,30 @@ func (v *shootsView) update(msg tea.Msg) tea.Cmd {
 	if !v.finishLoad(m) {
 		return next
 	}
-	v.shoots, v.pending = m.data.([]gardener.Shoot), nil
+	expire := v.setShoots(m.data.([]gardener.Shoot))
 	v.rebuild()
-	return tea.Batch(next, v.app.applyRestore(v.vid, v.tbl, v.open))
+	return tea.Batch(next, expire, v.app.applyRestore(v.vid, v.tbl, v.open))
+}
+
+// setShoots stores a new list and notes status changes; the returned command
+// removes their highlights again.
+func (v *shootsView) setShoots(shoots []gardener.Shoot) tea.Cmd {
+	v.shoots, v.pending = shoots, nil
+	now, changed := v.app.opts.Now(), false
+	for _, s := range shoots {
+		if _, ok := v.changes.observe(s.Namespace+"/"+s.Name, s.Status, now); ok {
+			changed = true
+		}
+	}
+	if changed {
+		return expireHighlight(v.vid)
+	}
+	return nil
 }
 
 func (v *shootsView) rebuild() {
 	rows := make([]row, 0, len(v.shoots))
+	now := v.app.opts.Now()
 	for _, s := range sortShoots(v.shoots, v.app.sortBy) {
 		if v.app.problemsOnly && (s.Status == gardener.StatusHealthy || s.Status == gardener.StatusHibernated) {
 			continue
@@ -154,13 +184,14 @@ func (v *shootsView) rebuild() {
 		if v.app.state.IsFavorite(v.target(s)) {
 			name = "★ " + name
 		}
-		cells := []string{name, second, s.Version, styles.StatusText(s.Status), s.LastOp.String(), s.Purpose}
+		cells := []string{name, second, s.Version, styles.StatusText(s.Status), lastOpCell(s.LastOp), age(now, s.LastOp.Updated), s.Purpose}
 		colors := []lipgloss.TerminalColor{nil, nil, nil, styles.StatusColor(s.Status)}
 		if v.all() {
 			cells = append([]string{name, s.Project}, cells[1:]...)
 			colors = append([]lipgloss.TerminalColor{nil}, colors...)
 		}
-		rows = append(rows, row{key: s.Namespace + "/" + s.Name, cells: cells, colors: colors, data: s})
+		key := s.Namespace + "/" + s.Name
+		rows = append(rows, row{key: key, cells: cells, colors: colors, data: s, changed: v.changes.recent(key, now)})
 	}
 	v.tbl.setRows(rows)
 }

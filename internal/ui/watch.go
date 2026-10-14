@@ -14,6 +14,8 @@ type shootWatch struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	ch     chan loadedMsg
+	// group identifies the watches of the favorites monitor.
+	group string
 }
 
 // watching reports whether shoot lists use watches instead of polling.

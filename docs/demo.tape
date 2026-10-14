@@ -26,6 +26,10 @@ Escape Sleep 600ms
 Type "y" Sleep 1.5s
 Type "t" Sleep 1.5s
 Escape Sleep 800ms
+Up Sleep 400ms
+Type "*" Sleep 1s
+Ctrl+R Sleep 3s
+Escape Sleep 800ms
 Type "/" Sleep 300ms Type "web" Sleep 1s
 Enter Sleep 500ms
 Escape Sleep 500ms

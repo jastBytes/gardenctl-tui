@@ -32,6 +32,7 @@ var (
 	Overlay    = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(ColorAccent).Padding(1, 2)
 	MenuActive = lipgloss.NewStyle().Bold(true).Foreground(ColorAccent)
 	YAMLKey    = lipgloss.NewStyle().Foreground(ColorAccent)
+	Changed    = lipgloss.NewStyle().Bold(true).Foreground(ColorYellow)
 )
 
 // StatusColor maps a status to its color: green healthy, yellow progressing,

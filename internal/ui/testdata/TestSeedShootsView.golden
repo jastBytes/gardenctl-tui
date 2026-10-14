@@ -1,8 +1,8 @@
  gtui  gardens › dev seeds › seed gcp-us1                                          auto-refresh off 
  2 shoots  ● 1 progressing  ● 1 healthy                                                             
-   SHOOT       PROJECT  VERSION  STATUS         LAST OPERATION              PURPOSE                 
- ▸ web         alpha    1.33.2   ● Progressing  Reconcile Processing (63%)  development             
-   monitoring  ops      1.33.2   ● Healthy      Reconcile Succeeded         development             
+   SHOOT       PROJECT  VERSION  STATUS         LAST OPERATION          UPDATED  PURPOSE            
+ ▸ web         alpha    1.33.2   ● Progressing  Reconcile 63% ▰▰▰▰▰▱▱▱  3h       development        
+   monitoring  ops      1.33.2   ● Healthy      Reconcile Succeeded     3h       development        
                                                                                                     
                                                                                                     
                                                                                                     
