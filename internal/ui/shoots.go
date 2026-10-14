@@ -20,6 +20,11 @@ type shootsView struct {
 	project *gardener.Project
 	seed    string
 	shoots  []gardener.Shoot
+
+	// watch keeps shoots up to date; nil while polling.
+	watch *shootWatch
+	// pending holds the latest watched list while auto-refresh is paused.
+	pending []gardener.Shoot
 }
 
 func newProjectShootsView(a *App, g config.Garden, p gardener.Project) *shootsView {
@@ -61,9 +66,35 @@ func (v *shootsView) title() string {
 	return "seed " + v.seed
 }
 
-func (v *shootsView) init() tea.Cmd { return v.refresh() }
+func (v *shootsView) init() tea.Cmd {
+	if !v.app.watching() {
+		return v.refresh()
+	}
+	var cmd tea.Cmd
+	v.watch, cmd = v.app.startWatch(v.vid, v.garden, v.scope())
+	return v.startLoad(cmd)
+}
+
+func (v *shootsView) scope() gardener.ShootScope {
+	if v.project != nil {
+		return gardener.ShootScope{Namespace: v.project.Namespace}
+	}
+	return gardener.ShootScope{Seed: v.seed}
+}
+
+func (v *shootsView) live() bool { return v.watch != nil }
+
+func (v *shootsView) close() { v.watch.stop() }
 
 func (v *shootsView) refresh() tea.Cmd {
+	if v.watch != nil {
+		// Watched lists are current; only show what arrived while paused.
+		if v.pending != nil {
+			v.shoots, v.pending = v.pending, nil
+			v.rebuild()
+		}
+		return nil
+	}
 	g := v.garden
 	return v.startLoad(load(v.vid, func(ctx context.Context) (any, error) {
 		c, err := v.app.clients.get(g)
@@ -82,17 +113,36 @@ func (v *shootsView) refresh() tea.Cmd {
 
 func (v *shootsView) update(msg tea.Msg) tea.Cmd {
 	m, ok := msg.(loadedMsg)
-	if !ok || !v.finishLoad(m) {
+	if !ok {
 		return nil
 	}
-	v.shoots = m.data.([]gardener.Shoot)
+	var next tea.Cmd
+	if m.stream != nil {
+		if m.stream != v.watch {
+			return nil // a stopped watch
+		}
+		if m.fallback {
+			v.watch.stop()
+			v.watch = nil
+			return v.refresh()
+		}
+		next = v.watch.next()
+		if m.err == nil && v.loaded && !v.app.autoRefresh {
+			v.pending = m.data.([]gardener.Shoot)
+			return next
+		}
+	}
+	if !v.finishLoad(m) {
+		return next
+	}
+	v.shoots, v.pending = m.data.([]gardener.Shoot), nil
 	v.rebuild()
-	return v.app.applyRestore(v.vid, v.tbl, v.open)
+	return tea.Batch(next, v.app.applyRestore(v.vid, v.tbl, v.open))
 }
 
 func (v *shootsView) rebuild() {
 	rows := make([]row, 0, len(v.shoots))
-	for _, s := range v.shoots {
+	for _, s := range sortShoots(v.shoots, v.app.sortBy) {
 		if v.app.problemsOnly && (s.Status == gardener.StatusHealthy || s.Status == gardener.StatusHibernated) {
 			continue
 		}
@@ -143,14 +193,15 @@ func (v *shootsView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
 	if handled, cmd := v.tableKey(msg); handled {
 		return true, cmd
 	}
-	if msg.String() == "!" {
+	switch msg.String() {
+	case "!":
 		v.app.problemsOnly = !v.app.problemsOnly
-		for _, sv := range v.app.stack {
-			if sv, ok := sv.(*shootsView); ok {
-				sv.rebuild()
-			}
-		}
+		v.app.rebuildShootViews()
 		return true, nil
+	case "o":
+		v.app.sortBy = (v.app.sortBy + 1) % sortModes
+		v.app.rebuildShootViews()
+		return true, setStatus(v.app.sortBy.describe(), false)
 	}
 	r, ok := v.tbl.selected()
 	if !ok {
@@ -162,6 +213,10 @@ func (v *shootsView) key(msg tea.KeyMsg) (bool, tea.Cmd) {
 		return true, push(newDetailView(v.app, v.garden, s, v.target(s)))
 	case "l":
 		return true, push(newMenuView(v.app, v.target(s)))
+	case "y":
+		return true, push(newYankView(v.app, v.target(s), s.TechnicalID))
+	case "v":
+		return true, push(newYAMLView(v.app, v.garden, s))
 	case "*":
 		cmd := v.app.toggleFavorite(v.target(s))
 		v.rebuild()
@@ -182,4 +237,19 @@ func toolHints(a *App) []hint {
 	return []hint{{strings.Join(keys, "/"), "tools"}}
 }
 
-func (v *shootsView) render(width, height int) string { return v.renderTable(width, height) }
+// rebuildShootViews applies changed list options (filter, order) to all shoot lists.
+func (a *App) rebuildShootViews() {
+	for _, sv := range a.stack {
+		if sv, ok := sv.(*shootsView); ok {
+			sv.rebuild()
+		}
+	}
+}
+
+func (v *shootsView) render(width, height int) string {
+	if !v.loaded {
+		return v.renderTable(width, height)
+	}
+	hidden := len(v.shoots) - len(v.tbl.all)
+	return shootSummary(v.shoots, hidden) + "\n" + v.renderTable(width, height-1)
+}

@@ -62,6 +62,9 @@ Flags: `--config` (gardenctl config file), `--gtui-config` (gtui config file),
 | `S` `K` `C` `F` | the same on the shoot's **control plane** (seed namespace) |
 | `*` | toggle favorite |
 | `!` | shoot lists: show only shoots with problems (red or yellow) |
+| `o` | shoot lists: sort by name, status (problems first), Kubernetes version (oldest first) or last operation (newest first) |
+| `y` | copy the name, path, `gardenctl target` command or technical ID |
+| `v` | the shoot's YAML manifest (`y` there copies it) |
 | `ctrl+r` | recent targets and favorites |
 | `p` | toggle provider-env (cloud provider CLI credentials) for launched tools |
 | `w` | toggle where tools start: this terminal or a new terminal window |
@@ -72,6 +75,16 @@ Flags: `--config` (gardenctl config file), `--gtui-config` (gtui config file),
 Tool keys are active in the shoot list, the seed list, the shoot details and
 the recent list. A tool bound to a vim key (`j`, `k`, `g`, `G`) takes
 precedence over it there; use the arrow keys to move then.
+
+Shoot lists start with a summary (`5 shoots  ● 1 error  ● 2 healthy …`), and
+the project list shows the number of shoots per project with the problems
+(`3 ✗1 ⟳1`: one red, one yellow), colored with the worst status. The counts
+need permission to list shoots in all namespaces; without it the column stays
+empty.
+
+Copying uses the system clipboard (`pbcopy`, `wl-copy`, `xclip`/`xsel`) when
+available and also sends the text to the terminal as an OSC 52 sequence, which
+works over SSH. In tmux this needs `set -g set-clipboard on`.
 
 Status colors: green = all conditions `True`, yellow = an operation is running
 or a condition is `Progressing`/`Unknown`, red = failed operation, errors or a
@@ -84,6 +97,7 @@ optional; these are the defaults:
 
 ```yaml
 refreshInterval: 5s      # "0" disables auto-refresh
+watch: true              # keep shoot lists up to date with watches
 providerEnv: false       # start with provider-env enabled
 newWindow: false         # start tools in a new terminal window (toggle: w)
 terminal: []             # command that opens a window, e.g. [tmux, new-window]
@@ -108,11 +122,19 @@ tools:
 - `refreshInterval` reloads the current view every interval (e.g. `10s`,
   `1m`). `a` pauses and resumes it while gtui runs; `0` turns it off
   completely (then `a` cannot turn it on). `r` refreshes once.
+- With `watch: true` (the default) the shoot lists and the shoot counts of the
+  project list are not reloaded but kept up to date with a Kubernetes watch:
+  changes appear within a second, and the API server only sends what changed.
+  The header shows `● live` then. `a` pauses the updates (`r` shows the
+  latest list once), and lost connections are re-established with backoff. If
+  you may not watch shoots, gtui falls back to reloading every
+  `refreshInterval`. Projects, seeds and the shoot details are small and still
+  reloaded every interval.
 - Placeholders in `command`: `$SHELL`, `{garden}`, `{project}`, `{seed}`,
   `{shoot}`, `{namespace}` (the shoot's project namespace).
 - Each tool also gets a control-plane key, by default the upper-case key. Set
   `controlPlaneKey` to choose another one.
-- The keys `q r a l h p w / ? * !` are reserved.
+- The keys `q r a l h p w o v y / ? * !` are reserved.
 - With `rememberLocation: true`, gtui saves where you were when you quit
   (garden, project or seed, shoot list or shoot details, and the selected row)
   and opens that view again on the next start. If an item no longer exists,
@@ -205,7 +227,7 @@ exit.
 - Read-only: no creating, changing or deleting shoots.
 - No resource views inside a cluster – that is what k9s is for.
 - Linux and macOS only (subshell start and env parsing for PowerShell come later).
-- Lists are loaded in full (no pagination/watch yet).
+- Lists are loaded in full (no pagination); only shoots are watched.
 
 ## Development
 

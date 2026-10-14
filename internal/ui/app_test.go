@@ -267,14 +267,14 @@ func TestLoadSuccessKeepsOtherErrors(t *testing.T) {
 	id := a.top().id()
 
 	a.Update(loadedMsg{viewID: id, err: errors.New("forbidden")})
-	a.Update(loadedMsg{viewID: id, data: []gardener.Project{}})
+	a.Update(loadedMsg{viewID: id, data: projectsData{}})
 	if a.status != "" {
 		t.Fatalf("a successful load should clear a load error, got %q", a.status)
 	}
 
 	// e.g. "k9s exited: exit status 1", followed by the refresh after the tool exits
 	a.Update(statusMsg{text: "k9s exited: exit status 1", err: true})
-	a.Update(loadedMsg{viewID: id, data: []gardener.Project{}})
+	a.Update(loadedMsg{viewID: id, data: projectsData{}})
 	if a.status != "k9s exited: exit status 1" {
 		t.Fatalf("tool error was cleared by the refresh, status %q", a.status)
 	}

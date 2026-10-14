@@ -1,19 +1,20 @@
  gtui  gardens                                                                     auto-refresh off 
                                                                                                     
                                                                                                     
-                                                                                                    
-                                                                                                    
   ╭─────────────────────────────────────────────────────────────────────────────────────────────╮   
   │                                                                                             │   
   │  Navigation                        Actions                       Tools                      │   
   │  ↑/↓   move (also j/k)             l      launcher menu          s Shell                    │   
   │  enter open / details              *      toggle favorite        S Shell (control plane)    │   
   │  esc/h back                        !      problems only          9 k9s                      │   
-  │  /     filter (fuzzy)              ctrl+r recent & favorites     K k9s (control plane)      │   
-  │  tab   seeds of the garden         p      toggle provider-env    c kubectl                  │   
-  │  A     all shoots of the garden    w      toggle new window      C kubectl (control plane)  │   
-  │  g/G   first / last                r      refresh                f sofka                    │   
-  │                                    a      toggle auto-refresh    F sofka (control plane)    │   
+  │  /     filter (fuzzy)              o      sort shoots            K k9s (control plane)      │   
+  │  tab   seeds of the garden         y      copy name, path, …     c kubectl                  │   
+  │  A     all shoots of the garden    v      shoot YAML             C kubectl (control plane)  │   
+  │  g/G   first / last                ctrl+r recent & favorites     f sofka                    │   
+  │                                    p      toggle provider-env    F sofka (control plane)    │   
+  │                                    w      toggle new window                                 │   
+  │                                    r      refresh                                           │   
+  │                                    a      toggle auto-refresh                               │   
   │                                    ?      help                                              │   
   │                                    q      quit                                              │   
   │                                                                                             │   
@@ -22,7 +23,6 @@
   │  Press any key to close.                                                                    │   
   │                                                                                             │   
   ╰─────────────────────────────────────────────────────────────────────────────────────────────╯   
-                                                                                                    
                                                                                                     
                                                                                                     
                                                                                                     

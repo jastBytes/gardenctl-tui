@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/jastbytes/gardenctl-tui/internal/config"
+	"github.com/jastbytes/gardenctl-tui/internal/gardener"
 	"github.com/jastbytes/gardenctl-tui/internal/session"
 	"github.com/jastbytes/gardenctl-tui/internal/state"
 	"github.com/jastbytes/gardenctl-tui/internal/ui/styles"
@@ -59,6 +60,10 @@ type Options struct {
 	Available func(config.Tool) bool
 	// State stores recent targets and favorites (default: in memory only).
 	State *state.Store
+	// Copy puts text into the clipboard (default: system clipboard and OSC 52).
+	Copy func(string) error
+	// WatchOptions tune the shoot watches (tests use short intervals).
+	WatchOptions gardener.WatchOptions
 }
 
 // App is the root model: navigation stack, status line and auto-refresh.
@@ -86,6 +91,8 @@ type App struct {
 	newWindow bool
 	// problemsOnly hides healthy and hibernated shoots in the shoot lists.
 	problemsOnly bool
+	// sortBy is the order of the shoot lists.
+	sortBy sortMode
 
 	state    *state.Store
 	showHelp bool
@@ -102,6 +109,9 @@ func New(opts Options) *App {
 	}
 	if opts.Now == nil {
 		opts.Now = time.Now
+	}
+	if opts.Copy == nil {
+		opts.Copy = copyToClipboard
 	}
 	sp := spinner.New()
 	sp.Spinner = spinner.MiniDot
@@ -270,8 +280,14 @@ func (a *App) handleKey(msg tea.KeyMsg) tea.Cmd {
 	return nil
 }
 
+// closer is implemented by views that hold resources, e.g. watches.
+type closer interface{ close() }
+
 func (a *App) popView() {
 	if len(a.stack) > 1 {
+		if c, ok := a.top().(closer); ok {
+			c.close()
+		}
 		a.stack = a.stack[:len(a.stack)-1]
 		a.status = ""
 	}
@@ -305,12 +321,18 @@ func (a *App) breadcrumb(width int) string {
 	right := styles.Dim.Render("auto-refresh off")
 	if a.autoRefresh {
 		right = styles.Dim.Render("⟳ " + a.opts.Config.RefreshInterval.String())
+		if l, ok := a.top().(interface{ live() bool }); ok && l.live() {
+			right = styles.Info.Render("● live")
+		}
 	}
 	if a.newWindow {
 		right = styles.Info.Render("new window") + "  " + right
 	}
 	if a.problemsOnly {
 		right = styles.Info.Render("problems only") + "  " + right
+	}
+	if a.sortBy != sortName {
+		right = styles.Info.Render("sort: "+a.sortBy.String()) + "  " + right
 	}
 	if a.providerEnv {
 		right = styles.Info.Render("provider-env") + "  " + right

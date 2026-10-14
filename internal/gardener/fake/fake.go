@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"sigs.k8s.io/yaml"
+
 	"github.com/jastbytes/gardenctl-tui/internal/gardener"
 )
 
@@ -19,10 +21,67 @@ type Client struct {
 	Shoots   []gardener.Shoot
 	// Err, if set, is returned by every call.
 	Err error
+	// MethodErr, if set for a method name, is returned by that method.
+	MethodErr map[string]error
 	// Delay is applied to every call (demo mode).
 	Delay time.Duration
 	// Calls counts calls per method name.
 	Calls map[string]int
+
+	watchers []chan struct{}
+}
+
+// Update changes the landscape and notifies running watches.
+func (c *Client) Update(fn func(c *Client)) {
+	c.mu.Lock()
+	fn(c)
+	watchers := c.watchers
+	c.mu.Unlock()
+	for _, w := range watchers {
+		select {
+		case w <- struct{}{}:
+		default: // an update is already pending
+		}
+	}
+}
+
+// WatchShoots emits the shoots of scope initially and after every Update.
+func (c *Client) WatchShoots(ctx context.Context, scope gardener.ShootScope, _ gardener.WatchOptions, emit func([]gardener.Shoot, error)) error {
+	if err := c.enter(ctx, "WatchShoots"); err != nil {
+		return fmt.Errorf("%w: %w", gardener.ErrWatchUnsupported, err)
+	}
+	changed := make(chan struct{}, 1)
+	c.mu.Lock()
+	c.watchers = append(c.watchers, changed)
+	c.mu.Unlock()
+	defer func() {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		for i, w := range c.watchers {
+			if w == changed {
+				c.watchers = append(c.watchers[:i], c.watchers[i+1:]...)
+				break
+			}
+		}
+	}()
+	for {
+		shoots := c.filter(func(s gardener.Shoot) bool {
+			return (scope.Namespace == "" || s.Namespace == scope.Namespace) && (scope.Seed == "" || s.Seed == scope.Seed)
+		})
+		emit(shoots, nil)
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-changed:
+		}
+	}
+}
+
+// Watchers returns the number of running watches.
+func (c *Client) Watchers() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.watchers)
 }
 
 var _ gardener.Client = &Client{}
@@ -34,6 +93,9 @@ func (c *Client) enter(ctx context.Context, method string) error {
 	}
 	c.Calls[method]++
 	err, delay := c.Err, c.Delay
+	if e := c.MethodErr[method]; e != nil {
+		err = e
+	}
 	c.mu.Unlock()
 	if delay > 0 {
 		select {
@@ -84,7 +146,7 @@ func (c *Client) GetShoot(ctx context.Context, namespace, name string) (*gardene
 	if err := c.enter(ctx, "GetShoot"); err != nil {
 		return nil, err
 	}
-	for _, s := range c.Shoots {
+	for _, s := range c.shoots() {
 		if s.Namespace == namespace && s.Name == name {
 			return &s, nil
 		}
@@ -92,9 +154,43 @@ func (c *Client) GetShoot(ctx context.Context, namespace, name string) (*gardene
 	return nil, fmt.Errorf("shoot %s/%s not found", namespace, name)
 }
 
+// GetShootYAML renders a small manifest from the view model.
+func (c *Client) GetShootYAML(ctx context.Context, namespace, name string) ([]byte, error) {
+	if err := c.enter(ctx, "GetShootYAML"); err != nil {
+		return nil, err
+	}
+	for _, s := range c.shoots() {
+		if s.Namespace != namespace || s.Name != name {
+			continue
+		}
+		m := map[string]any{
+			"apiVersion": "core.gardener.cloud/v1beta1",
+			"kind":       "Shoot",
+			"metadata":   map[string]any{"name": s.Name, "namespace": s.Namespace},
+			"spec": map[string]any{
+				"kubernetes": map[string]any{"version": s.Version},
+				"provider":   map[string]any{"type": s.Provider},
+				"purpose":    s.Purpose,
+				"region":     s.Region,
+				"seedName":   s.Seed,
+			},
+			"status": map[string]any{"isHibernated": s.Hibernated, "technicalID": s.TechnicalID},
+		}
+		return yaml.Marshal(m)
+	}
+	return nil, fmt.Errorf("shoot %s/%s not found", namespace, name)
+}
+
+// shoots returns a copy of the shoots (Update may change them concurrently).
+func (c *Client) shoots() []gardener.Shoot {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]gardener.Shoot(nil), c.Shoots...)
+}
+
 func (c *Client) filter(keep func(gardener.Shoot) bool) []gardener.Shoot {
 	var out []gardener.Shoot
-	for _, s := range c.Shoots {
+	for _, s := range c.shoots() {
 		if keep(s) {
 			out = append(out, s)
 		}
