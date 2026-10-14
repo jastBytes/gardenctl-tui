@@ -14,6 +14,10 @@ type loadedMsg struct {
 	viewID int
 	data   any
 	err    error
+	// stream is set for updates of a watch.
+	stream *shootWatch
+	// fallback reports that the watch is not possible; the view polls instead.
+	fallback bool
 }
 
 // statusMsg sets the status line.

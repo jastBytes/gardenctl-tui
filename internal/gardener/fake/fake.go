@@ -27,6 +27,61 @@ type Client struct {
 	Delay time.Duration
 	// Calls counts calls per method name.
 	Calls map[string]int
+
+	watchers []chan struct{}
+}
+
+// Update changes the landscape and notifies running watches.
+func (c *Client) Update(fn func(c *Client)) {
+	c.mu.Lock()
+	fn(c)
+	watchers := c.watchers
+	c.mu.Unlock()
+	for _, w := range watchers {
+		select {
+		case w <- struct{}{}:
+		default: // an update is already pending
+		}
+	}
+}
+
+// WatchShoots emits the shoots of scope initially and after every Update.
+func (c *Client) WatchShoots(ctx context.Context, scope gardener.ShootScope, _ gardener.WatchOptions, emit func([]gardener.Shoot, error)) error {
+	if err := c.enter(ctx, "WatchShoots"); err != nil {
+		return fmt.Errorf("%w: %w", gardener.ErrWatchUnsupported, err)
+	}
+	changed := make(chan struct{}, 1)
+	c.mu.Lock()
+	c.watchers = append(c.watchers, changed)
+	c.mu.Unlock()
+	defer func() {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		for i, w := range c.watchers {
+			if w == changed {
+				c.watchers = append(c.watchers[:i], c.watchers[i+1:]...)
+				break
+			}
+		}
+	}()
+	for {
+		shoots := c.filter(func(s gardener.Shoot) bool {
+			return (scope.Namespace == "" || s.Namespace == scope.Namespace) && (scope.Seed == "" || s.Seed == scope.Seed)
+		})
+		emit(shoots, nil)
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-changed:
+		}
+	}
+}
+
+// Watchers returns the number of running watches.
+func (c *Client) Watchers() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.watchers)
 }
 
 var _ gardener.Client = &Client{}
@@ -91,7 +146,7 @@ func (c *Client) GetShoot(ctx context.Context, namespace, name string) (*gardene
 	if err := c.enter(ctx, "GetShoot"); err != nil {
 		return nil, err
 	}
-	for _, s := range c.Shoots {
+	for _, s := range c.shoots() {
 		if s.Namespace == namespace && s.Name == name {
 			return &s, nil
 		}
@@ -104,7 +159,7 @@ func (c *Client) GetShootYAML(ctx context.Context, namespace, name string) ([]by
 	if err := c.enter(ctx, "GetShootYAML"); err != nil {
 		return nil, err
 	}
-	for _, s := range c.Shoots {
+	for _, s := range c.shoots() {
 		if s.Namespace != namespace || s.Name != name {
 			continue
 		}
@@ -126,9 +181,16 @@ func (c *Client) GetShootYAML(ctx context.Context, namespace, name string) ([]by
 	return nil, fmt.Errorf("shoot %s/%s not found", namespace, name)
 }
 
+// shoots returns a copy of the shoots (Update may change them concurrently).
+func (c *Client) shoots() []gardener.Shoot {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]gardener.Shoot(nil), c.Shoots...)
+}
+
 func (c *Client) filter(keep func(gardener.Shoot) bool) []gardener.Shoot {
 	var out []gardener.Shoot
-	for _, s := range c.Shoots {
+	for _, s := range c.shoots() {
 		if keep(s) {
 			out = append(out, s)
 		}

@@ -97,6 +97,7 @@ optional; these are the defaults:
 
 ```yaml
 refreshInterval: 5s      # "0" disables auto-refresh
+watch: true              # keep shoot lists up to date with watches
 providerEnv: false       # start with provider-env enabled
 newWindow: false         # start tools in a new terminal window (toggle: w)
 terminal: []             # command that opens a window, e.g. [tmux, new-window]
@@ -121,6 +122,14 @@ tools:
 - `refreshInterval` reloads the current view every interval (e.g. `10s`,
   `1m`). `a` pauses and resumes it while gtui runs; `0` turns it off
   completely (then `a` cannot turn it on). `r` refreshes once.
+- With `watch: true` (the default) the shoot lists and the shoot counts of the
+  project list are not reloaded but kept up to date with a Kubernetes watch:
+  changes appear within a second, and the API server only sends what changed.
+  The header shows `● live` then. `a` pauses the updates (`r` shows the
+  latest list once), and lost connections are re-established with backoff. If
+  you may not watch shoots, gtui falls back to reloading every
+  `refreshInterval`. Projects, seeds and the shoot details are small and still
+  reloaded every interval.
 - Placeholders in `command`: `$SHELL`, `{garden}`, `{project}`, `{seed}`,
   `{shoot}`, `{namespace}` (the shoot's project namespace).
 - Each tool also gets a control-plane key, by default the upper-case key. Set
@@ -218,7 +227,7 @@ exit.
 - Read-only: no creating, changing or deleting shoots.
 - No resource views inside a cluster – that is what k9s is for.
 - Linux and macOS only (subshell start and env parsing for PowerShell come later).
-- Lists are loaded in full (no pagination/watch yet).
+- Lists are loaded in full (no pagination); only shoots are watched.
 
 ## Development
 

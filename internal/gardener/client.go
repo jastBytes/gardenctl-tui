@@ -28,6 +28,8 @@ type Client interface {
 	GetShoot(ctx context.Context, namespace, name string) (*Shoot, error)
 	// GetShootYAML returns the shoot manifest as YAML (without managed fields).
 	GetShootYAML(ctx context.Context, namespace, name string) ([]byte, error)
+	// WatchShoots keeps the shoots of scope up to date, see crClient.WatchShoots.
+	WatchShoots(ctx context.Context, scope ShootScope, opts WatchOptions, emit func([]Shoot, error)) error
 }
 
 // Scheme contains the Gardener core API types.
@@ -38,11 +40,11 @@ func Scheme() *runtime.Scheme {
 }
 
 type crClient struct {
-	c client.Reader
+	c client.WithWatch
 }
 
-// New wraps a controller-runtime reader.
-func New(c client.Reader) Client { return &crClient{c: c} }
+// New wraps a controller-runtime client.
+func New(c client.WithWatch) Client { return &crClient{c: c} }
 
 // NewForGarden builds a client from the garden's kubeconfig (and context override).
 func NewForGarden(g config.Garden) (Client, error) {
@@ -60,7 +62,7 @@ func NewForGarden(g config.Garden) (Client, error) {
 		restCfg.ExecProvider.StdinUnavailable = true
 		restCfg.ExecProvider.StdinUnavailableMessage = "gtui runs a full-screen UI; log in with kubectl first"
 	}
-	c, err := client.New(restCfg, client.Options{Scheme: Scheme()})
+	c, err := client.NewWithWatch(restCfg, client.Options{Scheme: Scheme()})
 	if err != nil {
 		return nil, fmt.Errorf("garden %s: %w", g.Name, err)
 	}
@@ -101,12 +103,7 @@ func (c *crClient) listShoots(ctx context.Context, opts ...client.ListOption) ([
 	for i := range list.Items {
 		out = append(out, ShootFromAPI(&list.Items[i]))
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Namespace != out[j].Namespace {
-			return out[i].Namespace < out[j].Namespace
-		}
-		return out[i].Name < out[j].Name
-	})
+	sortByNamespaceAndName(out)
 	return out, nil
 }
 

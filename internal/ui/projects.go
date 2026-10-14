@@ -17,6 +17,11 @@ type projectsView struct {
 	garden config.Garden
 	// noShoots is set when listing all shoots is forbidden; the shoot counts stay empty.
 	noShoots bool
+	// watch keeps shoots up to date for the counts; nil while they are polled.
+	watch    *shootWatch
+	projects []gardener.Project
+	// shoots by project namespace; nil if unknown.
+	shoots map[string][]gardener.Shoot
 }
 
 // projectsData is the result of a projects load.
@@ -37,10 +42,19 @@ func newProjectsView(a *App, g config.Garden) *projectsView {
 }
 
 func (v *projectsView) title() string { return v.garden.Name }
-func (v *projectsView) init() tea.Cmd { return v.refresh() }
+func (v *projectsView) init() tea.Cmd {
+	if !v.app.watching() {
+		return v.refresh()
+	}
+	var cmd tea.Cmd
+	v.watch, cmd = v.app.startWatch(v.vid, v.garden, gardener.ShootScope{})
+	return tea.Batch(cmd, v.refresh())
+}
+
+func (v *projectsView) close() { v.watch.stop() }
 
 func (v *projectsView) refresh() tea.Cmd {
-	g, withShoots := v.garden, !v.noShoots
+	g, withShoots := v.garden, !v.noShoots && v.watch == nil
 	return v.startLoad(load(v.vid, func(ctx context.Context) (any, error) {
 		c, err := v.app.clients.get(g)
 		if err != nil {
@@ -71,19 +85,56 @@ func (v *projectsView) refresh() tea.Cmd {
 
 func (v *projectsView) update(msg tea.Msg) tea.Cmd {
 	m, ok := msg.(loadedMsg)
-	if !ok || !v.finishLoad(m) {
+	if !ok {
+		return nil
+	}
+	if m.stream != nil {
+		return v.watchUpdate(m)
+	}
+	if !v.finishLoad(m) {
 		return nil
 	}
 	data := m.data.(projectsData)
 	if data.forbidden {
 		v.noShoots = true
 	}
-	rows := make([]row, 0, len(data.projects))
-	for _, p := range data.projects {
+	v.projects = data.projects
+	if data.shoots != nil {
+		v.shoots = data.shoots
+	}
+	v.rebuild()
+	return v.app.applyRestore(v.vid, v.tbl, v.open)
+}
+
+// watchUpdate applies a watched shoot list to the counts.
+func (v *projectsView) watchUpdate(m loadedMsg) tea.Cmd {
+	switch {
+	case m.stream != v.watch:
+		return nil
+	case m.fallback:
+		v.watch.stop()
+		v.watch = nil
+		return v.refresh()
+	case m.err != nil:
+		return v.watch.next()
+	}
+	v.shoots = map[string][]gardener.Shoot{}
+	for _, s := range m.data.([]gardener.Shoot) {
+		v.shoots[s.Namespace] = append(v.shoots[s.Namespace], s)
+	}
+	if v.loaded {
+		v.rebuild()
+	}
+	return v.watch.next()
+}
+
+func (v *projectsView) rebuild() {
+	rows := make([]row, 0, len(v.projects))
+	for _, p := range v.projects {
 		var count string
 		var color lipgloss.TerminalColor
-		if data.shoots != nil {
-			count, color = shootCountCell(data.shoots[p.Namespace])
+		if v.shoots != nil {
+			count, color = shootCountCell(v.shoots[p.Namespace])
 		}
 		rows = append(rows, row{
 			key:    p.Name,
@@ -93,7 +144,6 @@ func (v *projectsView) update(msg tea.Msg) tea.Cmd {
 		})
 	}
 	v.tbl.setRows(rows)
-	return v.app.applyRestore(v.vid, v.tbl, v.open)
 }
 
 func (v *projectsView) hints() []hint {

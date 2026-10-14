@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/jastbytes/gardenctl-tui/internal/config"
+	"github.com/jastbytes/gardenctl-tui/internal/gardener"
 	"github.com/jastbytes/gardenctl-tui/internal/session"
 	"github.com/jastbytes/gardenctl-tui/internal/state"
 	"github.com/jastbytes/gardenctl-tui/internal/ui/styles"
@@ -61,6 +62,8 @@ type Options struct {
 	State *state.Store
 	// Copy puts text into the clipboard (default: system clipboard and OSC 52).
 	Copy func(string) error
+	// WatchOptions tune the shoot watches (tests use short intervals).
+	WatchOptions gardener.WatchOptions
 }
 
 // App is the root model: navigation stack, status line and auto-refresh.
@@ -277,8 +280,14 @@ func (a *App) handleKey(msg tea.KeyMsg) tea.Cmd {
 	return nil
 }
 
+// closer is implemented by views that hold resources, e.g. watches.
+type closer interface{ close() }
+
 func (a *App) popView() {
 	if len(a.stack) > 1 {
+		if c, ok := a.top().(closer); ok {
+			c.close()
+		}
 		a.stack = a.stack[:len(a.stack)-1]
 		a.status = ""
 	}
@@ -312,6 +321,9 @@ func (a *App) breadcrumb(width int) string {
 	right := styles.Dim.Render("auto-refresh off")
 	if a.autoRefresh {
 		right = styles.Dim.Render("⟳ " + a.opts.Config.RefreshInterval.String())
+		if l, ok := a.top().(interface{ live() bool }); ok && l.live() {
+			right = styles.Info.Render("● live")
+		}
 	}
 	if a.newWindow {
 		right = styles.Info.Render("new window") + "  " + right

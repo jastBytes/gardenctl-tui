@@ -157,7 +157,8 @@ func TestYAMLView(t *testing.T) {
 
 func TestProjectsWithoutShootAccess(t *testing.T) {
 	c := fake.Landscape()
-	c.MethodErr = map[string]error{"ListShoots": apierrors.NewForbidden(schema.GroupResource{Group: "core.gardener.cloud", Resource: "shoots"}, "", nil)}
+	forbidden := apierrors.NewForbidden(schema.GroupResource{Group: "core.gardener.cloud", Resource: "shoots"}, "", nil)
+	c.MethodErr = map[string]error{"ListShoots": forbidden, "WatchShoots": forbidden}
 	opts := testOptions(c)
 	opts.Config.RefreshInterval.Duration = 20 * time.Millisecond
 	tm := startApp(t, opts)
@@ -169,10 +170,87 @@ func TestProjectsWithoutShootAccess(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	app := quitAndSave(t, tm)
-	if n := c.CallCount("ListShoots"); n != 1 {
-		t.Fatalf("ListShoots called %d times after it was forbidden", n)
+	if n, w := c.CallCount("ListShoots"), c.CallCount("WatchShoots"); n != 1 || w != 1 {
+		t.Fatalf("ListShoots called %d times, WatchShoots %d times; want once each", n, w)
 	}
 	if app.status != "" {
 		t.Fatalf("missing shoot access should not be an error, status %q", app.status)
+	}
+}
+
+// liveOptions enable watching (auto-refresh on, but no tick within a test).
+func liveOptions(c *fake.Client) Options {
+	opts := testOptions(c)
+	opts.Config.RefreshInterval.Duration = time.Hour
+	opts.WatchOptions = gardener.WatchOptions{Throttle: time.Millisecond}
+	return opts
+}
+
+func waitUntil(t *testing.T, cond func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(3 * time.Second)
+	for !cond() {
+		if time.Now().After(deadline) {
+			t.Fatal("condition not met")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+func setShootStatus(c *fake.Client, name string, st gardener.Status) {
+	c.Update(func(c *fake.Client) {
+		for i := range c.Shoots {
+			if c.Shoots[i].Name == name {
+				c.Shoots[i].Status = st
+			}
+		}
+	})
+}
+
+func TestLiveShootList(t *testing.T) {
+	c := fake.Landscape()
+	tm := startApp(t, liveOptions(c))
+	waitFor(t, tm, "live")
+	send(tm, "enter")
+	waitFor(t, tm, "3 ⟳1") // counts of alpha come from the all-shoots watch
+	send(tm, "enter")
+	waitFor(t, tm, "● live")
+	waitUntil(t, func() bool { return c.Watchers() == 2 }) // projects (counts) + alpha
+
+	setShootStatus(c, "api-gw", gardener.StatusError)
+	waitFor(t, tm, "1 error")
+
+	send(tm, "a") // pause: updates are kept back
+	waitFor(t, tm, "auto-refresh off")
+	setShootStatus(c, "batch", gardener.StatusError)
+	time.Sleep(50 * time.Millisecond)
+	send(tm, "r") // shows them
+	waitFor(t, tm, "2 error")
+	if n := c.CallCount("ListShoots"); n != 0 {
+		t.Fatalf("watched views must not poll, ListShoots called %d times", n)
+	}
+
+	send(tm, "esc")
+	waitUntil(t, func() bool { return c.Watchers() == 1 })
+	send(tm, "esc")
+	waitUntil(t, func() bool { return c.Watchers() == 0 })
+	_ = tm.Quit()
+}
+
+func TestWatchFallsBackToPolling(t *testing.T) {
+	c := fake.Landscape()
+	c.MethodErr = map[string]error{"WatchShoots": apierrors.NewMethodNotSupported(schema.GroupResource{Resource: "shoots"}, "watch")}
+	tm := startApp(t, liveOptions(c))
+	waitFor(t, tm, "live")
+	send(tm, "enter")
+	waitFor(t, tm, "3 ⟳1")
+	send(tm, "enter")
+	waitFor(t, tm, "api-gw")
+	app := quitAndSave(t, tm)
+	if strings.Contains(app.View(), "● live") {
+		t.Fatal("polled view shown as live")
+	}
+	if n := c.CallCount("ListShoots"); n != 2 {
+		t.Fatalf("ListShoots called %d times, want 2 (counts and alpha)", n)
 	}
 }

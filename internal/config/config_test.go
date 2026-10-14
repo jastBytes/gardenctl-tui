@@ -120,6 +120,18 @@ tools:
 	}
 }
 
+func TestWatchOption(t *testing.T) {
+	dir := t.TempDir()
+	cfg, err := LoadGTUI(write(t, dir, "default.yaml", "refreshInterval: 10s\n"))
+	if err != nil || !cfg.Watch {
+		t.Fatalf("watch should default to true: %v %+v", err, cfg)
+	}
+	cfg, err = LoadGTUI(write(t, dir, "off.yaml", "watch: false\n"))
+	if err != nil || cfg.Watch {
+		t.Fatalf("watch: false not applied: %v %+v", err, cfg)
+	}
+}
+
 func TestLoadGTUIValidation(t *testing.T) {
 	for name, content := range map[string]string{
 		"reserved":  "tools:\n- {key: q, name: a, command: [a]}\n",

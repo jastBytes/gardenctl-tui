@@ -20,6 +20,11 @@ type shootsView struct {
 	project *gardener.Project
 	seed    string
 	shoots  []gardener.Shoot
+
+	// watch keeps shoots up to date; nil while polling.
+	watch *shootWatch
+	// pending holds the latest watched list while auto-refresh is paused.
+	pending []gardener.Shoot
 }
 
 func newProjectShootsView(a *App, g config.Garden, p gardener.Project) *shootsView {
@@ -61,9 +66,35 @@ func (v *shootsView) title() string {
 	return "seed " + v.seed
 }
 
-func (v *shootsView) init() tea.Cmd { return v.refresh() }
+func (v *shootsView) init() tea.Cmd {
+	if !v.app.watching() {
+		return v.refresh()
+	}
+	var cmd tea.Cmd
+	v.watch, cmd = v.app.startWatch(v.vid, v.garden, v.scope())
+	return v.startLoad(cmd)
+}
+
+func (v *shootsView) scope() gardener.ShootScope {
+	if v.project != nil {
+		return gardener.ShootScope{Namespace: v.project.Namespace}
+	}
+	return gardener.ShootScope{Seed: v.seed}
+}
+
+func (v *shootsView) live() bool { return v.watch != nil }
+
+func (v *shootsView) close() { v.watch.stop() }
 
 func (v *shootsView) refresh() tea.Cmd {
+	if v.watch != nil {
+		// Watched lists are current; only show what arrived while paused.
+		if v.pending != nil {
+			v.shoots, v.pending = v.pending, nil
+			v.rebuild()
+		}
+		return nil
+	}
 	g := v.garden
 	return v.startLoad(load(v.vid, func(ctx context.Context) (any, error) {
 		c, err := v.app.clients.get(g)
@@ -82,12 +113,31 @@ func (v *shootsView) refresh() tea.Cmd {
 
 func (v *shootsView) update(msg tea.Msg) tea.Cmd {
 	m, ok := msg.(loadedMsg)
-	if !ok || !v.finishLoad(m) {
+	if !ok {
 		return nil
 	}
-	v.shoots = m.data.([]gardener.Shoot)
+	var next tea.Cmd
+	if m.stream != nil {
+		if m.stream != v.watch {
+			return nil // a stopped watch
+		}
+		if m.fallback {
+			v.watch.stop()
+			v.watch = nil
+			return v.refresh()
+		}
+		next = v.watch.next()
+		if m.err == nil && v.loaded && !v.app.autoRefresh {
+			v.pending = m.data.([]gardener.Shoot)
+			return next
+		}
+	}
+	if !v.finishLoad(m) {
+		return next
+	}
+	v.shoots, v.pending = m.data.([]gardener.Shoot), nil
 	v.rebuild()
-	return v.app.applyRestore(v.vid, v.tbl, v.open)
+	return tea.Batch(next, v.app.applyRestore(v.vid, v.tbl, v.open))
 }
 
 func (v *shootsView) rebuild() {

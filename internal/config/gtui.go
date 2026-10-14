@@ -42,6 +42,9 @@ type GTUI struct {
 	Gardenctl string `json:"gardenctl,omitempty"`
 	// RememberLocation reopens the view (and selection) gtui was quit in.
 	RememberLocation bool `json:"rememberLocation,omitempty"`
+	// Watch keeps the shoot lists up to date with watches instead of
+	// reloading them every RefreshInterval.
+	Watch bool `json:"watch"`
 }
 
 // Duration is a time.Duration that (un)marshals as a string like "30s".
@@ -87,6 +90,7 @@ func DefaultGTUI() *GTUI {
 		Tools:           tools,
 		RefreshInterval: Duration{5 * time.Second},
 		Gardenctl:       "gardenctl",
+		Watch:           true,
 	}
 }
 
