@@ -1,5 +1,7 @@
 # gtui – a terminal UI for gardenctl
 
+[![Release](https://img.shields.io/github/v/release/jastBytes/gardenctl-tui)](https://github.com/jastBytes/gardenctl-tui/releases/latest)
+
 `gtui` lets you browse your Gardener landscapes (garden → project → shoot, or
 garden → seed → shoot), see the health of every shoot at a glance, and start a
 shell, `k9s`, `kubectl` or any other tool **already targeted at the selected
