@@ -6,6 +6,7 @@ package styles
 
 import (
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 
 	"github.com/jastbytes/gardenctl-tui/internal/gardener"
 )
@@ -36,7 +37,47 @@ var (
 	MenuActive = lipgloss.NewStyle().Bold(true).Foreground(ColorAccent)
 	YAMLKey    = lipgloss.NewStyle().Foreground(ColorAccent)
 	Changed    = lipgloss.NewStyle().Bold(true).Foreground(ColorYellow)
+	Warn       = lipgloss.NewStyle().Foreground(ColorYellow)
 )
+
+func init() {
+	// Without colors (https://no-color.org) the selection has no background;
+	// reverse video keeps it visible.
+	if termenv.EnvNoColor() {
+		Selected = Selected.Reverse(true)
+	}
+}
+
+// StatusSymbol tells the statuses apart without colors. All symbols are one
+// cell wide in every terminal (no emoji, no East Asian ambiguous width).
+func StatusSymbol(s gardener.Status) string {
+	switch s {
+	case gardener.StatusHealthy:
+		return "✓"
+	case gardener.StatusProgressing:
+		return "⟳"
+	case gardener.StatusError:
+		return "✗"
+	case gardener.StatusHibernated:
+		return "☾"
+	default:
+		return "?"
+	}
+}
+
+// ConditionSymbol is StatusSymbol for a condition status string.
+func ConditionSymbol(status string) string {
+	switch status {
+	case "True":
+		return "✓"
+	case "False":
+		return "✗"
+	case "Progressing":
+		return "⟳"
+	default:
+		return "?"
+	}
+}
 
 // StatusColor maps a status to its color: green healthy, yellow progressing,
 // red error, grey hibernated/unknown.
@@ -65,7 +106,7 @@ func ConditionColor(status string) lipgloss.TerminalColor {
 	}
 }
 
-// StatusText renders "● Healthy" in the status color.
+// StatusText renders e.g. "✓ Healthy" (callers color it with StatusColor).
 func StatusText(s gardener.Status) string {
-	return "● " + s.String()
+	return StatusSymbol(s) + " " + s.String()
 }

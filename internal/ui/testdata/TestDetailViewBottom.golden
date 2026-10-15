@@ -1,0 +1,29 @@
+ gtui  gardens › dev › beta › db                                                   auto-refresh off 
+ ✗ task "Waiting until shoot infrastructure has been reconciled" failed: quota exceeded             
+                                                                                                    
+ Conditions                                                                                         
+ ✓  APIServerAvailable              True        3h ago                                              
+ ✗  ControlPlaneHealthy             False       3h ago                                              
+    DeploymentUnhealthy: kube-controller-manager is not available                                   
+ ✓  ObservabilityComponentsHealthy  True        3h ago                                              
+ ✓  EveryNodeReady                  True        3h ago                                              
+ ✓  SystemComponentsHealthy         True        3h ago                                              
+                                                                                                    
+ Constraints                                                                                        
+ ✓  HibernationPossible                True        3h ago                                           
+ ✗  MaintenancePreconditionsSatisfied  False       3h ago                                           
+    PDBBlocking: PodDisruptionBudget blocks drain                                                   
+                                                                                                    
+ Workers                                                                                            
+ POOL      MACHINE    IMAGE                 NODES  ZONES                                            
+ worker-a  m5.large   gardenlinux 1592.1.0  1-3    eu-central-1a                                    
+ db        r5.xlarge  gardenlinux 1592.1.0  3-3    eu-central-1a,eu-central-1b,eu-central-1c        
+                                                                                                    
+ Maintenance & Hibernation                                                                          
+ Window        22:00-23:00 +0000                                                                    
+ Auto-update   Kubernetes, machine images                                                           
+                                                                                                    
+ Credentials Rotation                                                                               
+ Certificate authorities  completed 3h ago                                                          
+ ETCD encryption key      preparing                                                                 
+ s/9/c/f tools · enter launch… · v yaml · y copy · * favorite · esc back · ? help · q quit          

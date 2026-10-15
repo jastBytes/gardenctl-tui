@@ -13,10 +13,10 @@ import (
 	"github.com/jastbytes/gardenctl-tui/internal/state"
 )
 
-// monitor keeps the status of the favorite shoots up to date, for the
-// favorites view and for notifications. It watches the project namespaces
-// of the favorites, which project members may watch without cluster-wide
-// permissions.
+// monitor keeps the status of the favorite and recent shoots up to date,
+// for the favorites view and for notifications (favorites only). It watches
+// their project namespaces, which project members may watch without
+// cluster-wide permissions.
 type monitor struct {
 	id int
 	// watches by group ("garden/namespace").
@@ -74,13 +74,13 @@ func (a *App) monitorGroups(withRecent bool) map[string]monitorGroup {
 	return out
 }
 
-// syncMonitor starts watches for new favorite groups and stops unused ones.
+// syncMonitor starts watches for new favorite and recent groups and stops unused ones.
 func (a *App) syncMonitor() tea.Cmd {
 	if !a.watching() {
 		return nil
 	}
 	m := a.mon
-	want := a.monitorGroups(false)
+	want := a.monitorGroups(true)
 	for key, w := range m.watches {
 		if _, ok := want[key]; !ok {
 			w.stop()

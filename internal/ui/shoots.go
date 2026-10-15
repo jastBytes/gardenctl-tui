@@ -39,7 +39,7 @@ func shootColumns(second ...string) []column {
 		cols = append(cols, column{title: s})
 	}
 	return append(cols, column{title: "Version"}, column{title: "Status"},
-		column{title: "Last Operation", max: 40}, column{title: "Updated"}, column{title: "Purpose"})
+		column{title: "Last Operation", max: 40}, column{title: "Updated", drop: 1}, column{title: "Purpose", drop: 2})
 }
 
 func newProjectShootsView(a *App, g config.Garden, p gardener.Project) *shootsView {

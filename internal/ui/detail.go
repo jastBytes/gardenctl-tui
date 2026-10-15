@@ -129,6 +129,12 @@ func (v *detailView) content(width int) string {
 	if s.TechnicalID != "" {
 		field("Technical ID", s.TechnicalID)
 	}
+	if s.Domain != "" {
+		field("Domain", s.Domain)
+	}
+	if s.APIServer != "" {
+		field("API server", s.APIServer)
+	}
 	if !s.Created.IsZero() {
 		field("Created", ago(now, s.Created))
 	}
@@ -163,7 +169,74 @@ func (v *detailView) content(width int) string {
 	if len(s.Constraints) > 0 {
 		writeConditions(&b, "Constraints", s.Constraints, now, width)
 	}
+	writeWorkers(&b, s.Workers)
+
+	if s.MaintenanceWindow != "" || len(s.AutoUpdate) > 0 || len(s.HibernationSchedules) > 0 {
+		b.WriteString(styles.Section.Render("Maintenance & Hibernation") + "\n")
+		if s.MaintenanceWindow != "" {
+			field("Window", s.MaintenanceWindow)
+		}
+		auto := "off"
+		if len(s.AutoUpdate) > 0 {
+			auto = strings.Join(s.AutoUpdate, ", ")
+		}
+		field("Auto-update", auto)
+		for i, sc := range s.HibernationSchedules {
+			label := ""
+			if i == 0 {
+				label = "Schedule"
+			}
+			field(label, sc)
+		}
+	}
+
+	if len(s.Rotations) > 0 {
+		b.WriteString(styles.Section.Render("Credentials Rotation") + "\n")
+		nameW := 0
+		for _, r := range s.Rotations {
+			nameW = max(nameW, len(r.Name))
+		}
+		for _, r := range s.Rotations {
+			state := "completed " + ago(now, r.LastCompleted)
+			switch {
+			case r.Phase != "" && r.Phase != "Completed":
+				state = styles.Warn.Render(strings.ToLower(r.Phase))
+			case r.LastCompleted.IsZero():
+				state = styles.Dim.Render("never completed")
+			}
+			fmt.Fprintf(&b, "%-*s  %s\n", nameW, r.Name, state)
+		}
+	}
 	return strings.TrimRight(b.String(), "\n")
+}
+
+// writeWorkers renders the worker pools as a small table.
+func writeWorkers(b *strings.Builder, workers []gardener.Worker) {
+	if len(workers) == 0 {
+		return
+	}
+	b.WriteString(styles.Section.Render("Workers") + "\n")
+	rows := [][]string{{"POOL", "MACHINE", "IMAGE", "NODES", "ZONES"}}
+	for _, w := range workers {
+		rows = append(rows, []string{w.Name, w.MachineType, w.Image, fmt.Sprintf("%d-%d", w.Min, w.Max), strings.Join(w.Zones, ",")})
+	}
+	widths := make([]int, len(rows[0]))
+	for _, r := range rows {
+		for i, c := range r {
+			widths[i] = max(widths[i], len(c))
+		}
+	}
+	for i, r := range rows {
+		var line strings.Builder
+		for j, c := range r {
+			fmt.Fprintf(&line, "%-*s  ", widths[j], c)
+		}
+		text := strings.TrimRight(line.String(), " ")
+		if i == 0 {
+			text = styles.Header.Render(text)
+		}
+		b.WriteString(text + "\n")
+	}
 }
 
 func writeConditions(b *strings.Builder, title string, conds []gardener.Condition, now time.Time, width int) {
@@ -178,7 +251,7 @@ func writeConditions(b *strings.Builder, title string, conds []gardener.Conditio
 	}
 	for _, c := range conds {
 		st := lipgloss.NewStyle().Foreground(styles.ConditionColor(c.Status))
-		line := fmt.Sprintf("%s  %-*s  %-11s", st.Render("●"), typeW, c.Type, st.Render(fmt.Sprintf("%-11s", c.Status)))
+		line := fmt.Sprintf("%s  %-*s  %-11s", st.Render(styles.ConditionSymbol(c.Status)), typeW, c.Type, st.Render(fmt.Sprintf("%-11s", c.Status)))
 		if !c.Since.IsZero() {
 			line += styles.Dim.Render(" " + ago(now, c.Since))
 		}

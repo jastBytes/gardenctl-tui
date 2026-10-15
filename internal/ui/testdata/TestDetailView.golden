@@ -1,12 +1,14 @@
  gtui  gardens › dev › beta › db                                                   auto-refresh off 
  Shoot         db                                                                                   
  Project       beta  (garden-beta)                                                                  
- Status        ● Error                                                                              
+ Status        ✗ Error                                                                              
  Seed          aws-eu1                                                                              
  Kubernetes    1.31.9                                                                               
  Provider      aws eu-central-1                                                                     
  Purpose       production                                                                           
  Technical ID  shoot--beta--db                                                                      
+ Domain        db.beta.example.com                                                                  
+ API server    https://api.db.beta.example.com                                                      
  Created       3h ago                                                                               
                                                                                                     
  Last Operation                                                                                     
@@ -18,22 +20,20 @@
  ✗ task "Waiting until shoot infrastructure has been reconciled" failed: quota exceeded             
                                                                                                     
  Conditions                                                                                         
- ●  APIServerAvailable              True        3h ago                                              
- ●  ControlPlaneHealthy             False       3h ago                                              
+ ✓  APIServerAvailable              True        3h ago                                              
+ ✗  ControlPlaneHealthy             False       3h ago                                              
     DeploymentUnhealthy: kube-controller-manager is not available                                   
- ●  ObservabilityComponentsHealthy  True        3h ago                                              
- ●  EveryNodeReady                  True        3h ago                                              
- ●  SystemComponentsHealthy         True        3h ago                                              
+ ✓  ObservabilityComponentsHealthy  True        3h ago                                              
+ ✓  EveryNodeReady                  True        3h ago                                              
+ ✓  SystemComponentsHealthy         True        3h ago                                              
                                                                                                     
  Constraints                                                                                        
- ●  HibernationPossible                True        3h ago                                           
- ●  MaintenancePreconditionsSatisfied  False       3h ago                                           
+ ✓  HibernationPossible                True        3h ago                                           
+ ✗  MaintenancePreconditionsSatisfied  False       3h ago                                           
     PDBBlocking: PodDisruptionBudget blocks drain                                                   
                                                                                                     
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
+ Workers                                                                                            
+ POOL      MACHINE    IMAGE                 NODES  ZONES                                            
+ worker-a  m5.large   gardenlinux 1592.1.0  1-3    eu-central-1a                                    
+ db        r5.xlarge  gardenlinux 1592.1.0  3-3    eu-central-1a,eu-central-1b,eu-central-1c        
  s/9/c/f tools · enter launch… · v yaml · y copy · * favorite · esc back · ? help · q quit          

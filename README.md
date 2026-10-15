@@ -86,7 +86,7 @@ Tool keys are active in the shoot list, the seed list, the shoot details and
 the recent list. A tool bound to a vim key (`j`, `k`, `g`, `G`) takes
 precedence over it there; use the arrow keys to move then.
 
-Shoot lists start with a summary (`5 shoots  ● 1 error  ● 2 healthy …`), and
+Shoot lists start with a summary (`5 shoots  ✗ 1 error  ✓ 2 healthy …`), and
 the project list shows the number of shoots per project with the problems
 (`3 ✗1 ⟳1`: one red, one yellow), colored with the worst status. The counts
 need permission to list shoots in all namespaces; without it the column stays
@@ -94,13 +94,19 @@ empty.
 
 Running operations show their progress (`Reconcile 63% ▰▰▰▰▰▱▱▱`), and
 `Updated` says how long ago the last operation changed. A row whose status
-just changed is marked with `▮` for ten seconds.
+just changed is marked with `▮` for ten seconds. When the terminal is too
+narrow, less important columns (purpose, owner, age) are hidden instead of
+cutting off the others.
+
+The shoot details also show the DNS domain, the API server, the worker pools
+(machine type, image, node range, zones), the maintenance window and
+auto-updates, hibernation schedules and the state of credentials rotations.
 
 ### Favorites
 
 Mark shoots with `*`; `ctrl+r` lists them with their live status, together
 with your recent targets. While gtui runs, it watches the project namespaces
-of your favorites (no cluster-wide permissions needed). When a favorite turns
+of your favorites and recent shoots (no cluster-wide permissions needed). When a favorite turns
 red, gtui says so in the status line and rings the terminal bell; with
 `notify: [bell, desktop]` you also get a desktop notification (`notify-send`
 on Linux, `osascript` on macOS), `notify: []` turns both off. A favorite that
@@ -113,9 +119,12 @@ Copying uses the system clipboard (`pbcopy`, `wl-copy`, `xclip`/`xsel`) when
 available and also sends the text to the terminal as an OSC 52 sequence, which
 works over SSH. In tmux this needs `set -g set-clipboard on`.
 
-Status colors: green = all conditions `True`, yellow = an operation is running
-or a condition is `Progressing`/`Unknown`, red = failed operation, errors or a
-`False` condition, grey = hibernated.
+Status: `✓` green = all conditions `True`, `⟳` yellow = an operation is
+running or a condition is `Progressing`/`Unknown`, `✗` red = failed operation,
+errors or a `False` condition, `☾` grey = hibernated, `?` = unknown. The
+symbols carry the status without colors too: with
+[`NO_COLOR`](https://no-color.org) set, gtui uses no colors and shows the
+selected row in reverse video.
 
 ## Configuration
 

@@ -120,7 +120,7 @@ var summaryOrder = []gardener.Status{
 	gardener.StatusHealthy, gardener.StatusHibernated,
 }
 
-// shootSummary renders e.g. "5 shoots  ● 1 error  ● 3 healthy  ● 1 hibernated".
+// shootSummary renders e.g. "5 shoots  ✗ 1 error  ✓ 3 healthy  ☾ 1 hibernated".
 func shootSummary(shoots []gardener.Shoot, hidden int) string {
 	counts := map[gardener.Status]int{}
 	for _, s := range shoots {
@@ -133,7 +133,7 @@ func shootSummary(shoots []gardener.Shoot, hidden int) string {
 	parts := []string{fmt.Sprintf("%d %s", len(shoots), noun)}
 	for _, st := range summaryOrder {
 		if n := counts[st]; n > 0 {
-			dot := lipgloss.NewStyle().Foreground(styles.StatusColor(st)).Render("●")
+			dot := lipgloss.NewStyle().Foreground(styles.StatusColor(st)).Render(styles.StatusSymbol(st))
 			parts = append(parts, fmt.Sprintf("%s %d %s", dot, n, strings.ToLower(st.String())))
 		}
 	}

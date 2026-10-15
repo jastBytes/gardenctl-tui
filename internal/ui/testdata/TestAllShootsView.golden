@@ -1,11 +1,11 @@
  gtui  gardens › dev › all shoots                                                  auto-refresh off 
- 5 shoots  ● 1 error  ● 1 progressing  ● 2 healthy  ● 1 hibernated                                  
-   SHOOT       PROJECT  SEED     VERSION  STATUS         LAST OPERATION        UPDATED  PURPOSE     
- ▸ api-gw      alpha    aws-eu1  1.33.2   ● Healthy      Reconcile Succeeded   3h       development 
-   batch       alpha    aws-eu1  1.32.5   ● Hibernated   Reconcile Succeeded   3h       development 
-   web         alpha    gcp-us1  1.33.2   ● Progressing  Reconcile 63% ▰▰▰▰▰…  3h       development 
-   db          beta     aws-eu1  1.31.9   ● Error        Reconcile Error (89…  3h       production  
-   monitoring  ops      gcp-us1  1.33.2   ● Healthy      Reconcile Succeeded   3h       development 
+ 5 shoots  ✗ 1 error  ⟳ 1 progressing  ✓ 2 healthy  ☾ 1 hibernated                                  
+   SHOOT       PROJECT  SEED     VERSION  STATUS         LAST OPERATION          UPDATED            
+ ▸ api-gw      alpha    aws-eu1  1.33.2   ✓ Healthy      Reconcile Succeeded     3h                 
+   batch       alpha    aws-eu1  1.32.5   ☾ Hibernated   Reconcile Succeeded     3h                 
+   web         alpha    gcp-us1  1.33.2   ⟳ Progressing  Reconcile 63% ▰▰▰▰▰▱▱▱  3h                 
+   db          beta     aws-eu1  1.31.9   ✗ Error        Reconcile Error (89%)   3h                 
+   monitoring  ops      gcp-us1  1.33.2   ✓ Healthy      Reconcile Succeeded     3h                 
                                                                                                     
                                                                                                     
                                                                                                     

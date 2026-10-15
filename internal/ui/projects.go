@@ -39,7 +39,7 @@ func newProjectsView(a *App, g config.Garden) *projectsView {
 	return &projectsView{
 		listBase: newListBase(a,
 			column{title: "Project"}, column{title: "Namespace"}, column{title: "Phase"}, column{title: "Shoots"},
-			column{title: "Owner", max: 40}, column{title: "Purpose", max: 50}),
+			column{title: "Owner", max: 40, drop: 1}, column{title: "Purpose", max: 50, drop: 2}),
 		garden: g,
 	}
 }

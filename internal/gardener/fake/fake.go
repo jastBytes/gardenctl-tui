@@ -219,12 +219,19 @@ func healthyConds() []gardener.Condition {
 }
 
 func mkShoot(project, name, seed, version string, st gardener.Status, mutate ...func(*gardener.Shoot)) gardener.Shoot {
+	const region = "eu-central-1"
 	s := gardener.Shoot{
 		Name: name, Namespace: "garden-" + project, Project: project, Seed: seed,
-		Version: version, Provider: "aws", Region: "eu-central-1", Purpose: "development",
+		Version: version, Provider: "aws", Region: region, Purpose: "development",
 		TechnicalID: "shoot--" + project + "--" + name, Status: st,
 		LastOp:     gardener.LastOperation{Type: "Reconcile", State: "Succeeded", Progress: 100, Updated: epoch},
 		Conditions: healthyConds(), Created: epoch,
+		Domain:            name + "." + project + ".example.com",
+		APIServer:         "https://api." + name + "." + project + ".example.com",
+		Workers:           []gardener.Worker{{Name: "worker-a", MachineType: "m5.large", Image: "gardenlinux 1592.1.0", Min: 1, Max: 3, Zones: []string{region + "a"}}},
+		MaintenanceWindow: "22:00-23:00 +0000",
+		AutoUpdate:        []string{"Kubernetes", "machine images"},
+		Rotations:         []gardener.Rotation{{Name: "Certificate authorities", Phase: "Completed", LastCompleted: epoch}},
 	}
 	for _, m := range mutate {
 		m(&s)
@@ -248,6 +255,7 @@ func Landscape() *Client {
 			mkShoot("alpha", "api-gw", "aws-eu1", "1.33.2", gardener.StatusHealthy),
 			mkShoot("alpha", "batch", "aws-eu1", "1.32.5", gardener.StatusHibernated, func(s *gardener.Shoot) {
 				s.Hibernated = true
+				s.HibernationSchedules = []string{"hibernate 00 20 * * 1-5, wake up 00 08 * * 1-5 (Europe/Berlin)"}
 			}),
 			mkShoot("alpha", "web", "gcp-us1", "1.33.2", gardener.StatusProgressing, func(s *gardener.Shoot) {
 				s.Provider, s.Region = "gcp", "us-east1"
@@ -256,6 +264,9 @@ func Landscape() *Client {
 			}),
 			mkShoot("beta", "db", "aws-eu1", "1.31.9", gardener.StatusError, func(s *gardener.Shoot) {
 				s.Purpose = "production"
+				s.HibernationSchedules = nil
+				s.Workers = append(s.Workers, gardener.Worker{Name: "db", MachineType: "r5.xlarge", Image: "gardenlinux 1592.1.0", Min: 3, Max: 3, Zones: []string{"eu-central-1a", "eu-central-1b", "eu-central-1c"}})
+				s.Rotations = append(s.Rotations, gardener.Rotation{Name: "ETCD encryption key", Phase: "Preparing"})
 				s.LastOp = gardener.LastOperation{Type: "Reconcile", State: "Error", Progress: 89, Message: "Flow failed", Updated: epoch}
 				s.Conditions[1] = gardener.Condition{Type: "ControlPlaneHealthy", Status: "False", Reason: "DeploymentUnhealthy", Message: "kube-controller-manager is not available", Since: epoch}
 				s.LastErrors = []string{"task \"Waiting until shoot infrastructure has been reconciled\" failed: quota exceeded"}

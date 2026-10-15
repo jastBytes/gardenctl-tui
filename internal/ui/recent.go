@@ -27,7 +27,7 @@ type groupShoots struct {
 
 func newRecentView(a *App) *recentView {
 	v := &recentView{newListBase(a, column{title: " "}, column{title: "Target"}, column{title: "Status"},
-		column{title: "Last Operation", max: 40}, column{title: "Updated"}, column{title: "Last Tool"}, column{title: "Used"})}
+		column{title: "Last Operation", max: 40}, column{title: "Updated", drop: 1}, column{title: "Last Tool", drop: 2}, column{title: "Used", drop: 3})}
 	v.rebuild()
 	v.loaded = true
 	return v

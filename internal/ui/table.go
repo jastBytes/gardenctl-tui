@@ -19,6 +19,9 @@ type column struct {
 	title string
 	// max caps the auto width (0 = no cap).
 	max int
+	// drop marks a column that is hidden when the table does not fit;
+	// higher values are hidden first (0 = always shown).
+	drop int
 }
 
 type row struct {
@@ -172,6 +175,8 @@ func (t *table) move(d int) {
 	t.clamp()
 }
 
+// widths returns the column widths for a table of width total; hidden
+// columns get -1.
 func (t *table) widths(total int) []int {
 	n := len(t.columns)
 	w := make([]int, n)
@@ -186,9 +191,24 @@ func (t *table) widths(total int) []int {
 			w[i] = c.max
 		}
 	}
-	gap := 2 * (n - 1)
+	visible := n
+	width := func() int { return sum(w) + 2*(visible-1) }
+	// Hide optional columns, most optional first, until everything fits.
+	for width() > total {
+		drop := -1
+		for i, c := range t.columns {
+			if c.drop > 0 && w[i] >= 0 && (drop < 0 || c.drop > t.columns[drop].drop) {
+				drop = i
+			}
+		}
+		if drop < 0 {
+			break
+		}
+		w[drop] = -1
+		visible--
+	}
 	// Shrink the widest column until everything fits.
-	for sum(w)+gap > total {
+	for width() > total {
 		widest := 0
 		for i := range w {
 			if w[i] > w[widest] {
@@ -203,10 +223,11 @@ func (t *table) widths(total int) []int {
 	return w
 }
 
+// sum adds the widths of the visible columns.
 func sum(xs []int) int {
 	s := 0
 	for _, x := range xs {
-		s += x
+		s += max(x, 0)
 	}
 	return s
 }
@@ -225,9 +246,11 @@ func (t *table) view(width, height int) string {
 	w := t.widths(width - gutter)
 	var b strings.Builder
 
-	hdr := make([]string, len(t.columns))
+	hdr := make([]string, 0, len(t.columns))
 	for i, c := range t.columns {
-		hdr[i] = cell(strings.ToUpper(c.title), w[i], styles.Header)
+		if w[i] >= 0 {
+			hdr = append(hdr, cell(strings.ToUpper(c.title), w[i], styles.Header))
+		}
 	}
 	b.WriteString("  " + strings.Join(hdr, "  "))
 
@@ -249,8 +272,11 @@ func (t *table) view(width, height int) string {
 		if i == t.cursor {
 			base = styles.Selected
 		}
-		cells := make([]string, len(t.columns))
+		cells := make([]string, 0, len(t.columns))
 		for c := range t.columns {
+			if w[c] < 0 {
+				continue
+			}
 			text := ""
 			if c < len(r.cells) {
 				text = r.cells[c]
@@ -259,7 +285,7 @@ func (t *table) view(width, height int) string {
 			if c < len(r.colors) && r.colors[c] != nil {
 				st = st.Foreground(r.colors[c])
 			}
-			cells[c] = cell(text, w[c], st)
+			cells = append(cells, cell(text, w[c], st))
 		}
 		sep, marker := "  ", "  "
 		switch {

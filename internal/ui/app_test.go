@@ -123,6 +123,20 @@ func TestDetailView(t *testing.T) {
 	snapshot(t, tm)
 }
 
+func TestDetailViewBottom(t *testing.T) {
+	tm := teatest.NewTestModel(t, New(testOptions(fake.Landscape())), teatest.WithInitialTermSize(100, 30))
+	waitFor(t, tm, "live")
+	send(tm, "enter")
+	waitFor(t, tm, "garden-ops")
+	send(tm, "down", "enter")
+	waitFor(t, tm, "db")
+	send(tm, "enter")
+	waitFor(t, tm, "Technical ID")
+	send(tm, "G")
+	waitFor(t, tm, "Credentials Rotation")
+	snapshot(t, tm)
+}
+
 func TestSeedsView(t *testing.T) {
 	tm := startApp(t, testOptions(fake.Landscape()))
 	waitFor(t, tm, "live")
