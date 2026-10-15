@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/x/exp/teatest"
 
 	"github.com/jastbytes/gardenctl-tui/internal/gardener/fake"
+	"github.com/jastbytes/gardenctl-tui/internal/session"
 	"github.com/jastbytes/gardenctl-tui/internal/state"
 )
 
@@ -164,5 +165,32 @@ func TestRememberLocationAllShoots(t *testing.T) {
 	app := quitAndSave(t, tm)
 	if got := titles(app); !reflect.DeepEqual(got, []string{"gardens", "dev", "all shoots"}) {
 		t.Fatalf("restored stack: %v", got)
+	}
+}
+
+func TestStartAtShellTarget(t *testing.T) {
+	cases := map[string]struct {
+		target session.Target
+		// until is shown once the target view has loaded.
+		until string
+		want  []string
+	}{
+		"shoot":         {session.Target{Garden: "dev", Project: "beta", Shoot: "db"}, "Technical ID", []string{"gardens", "dev", "beta", "db"}},
+		"control plane": {session.Target{Garden: "dev", Project: "alpha", Shoot: "web", ControlPlane: true}, "Technical ID", []string{"gardens", "dev", "alpha", "web"}},
+		"seed shoot":    {session.Target{Garden: "dev", Seed: "gcp-us1", Shoot: "monitoring"}, "Technical ID", []string{"gardens", "dev seeds", "seed gcp-us1", "monitoring"}},
+		"project":       {session.Target{Garden: "d", Project: "alpha"}, "3 shoots", []string{"gardens", "dev", "alpha"}}, // garden alias
+		"garden":        {session.Target{Garden: "live"}, "garden-ops", []string{"gardens", "live"}},
+		"unknown":       {session.Target{Garden: "nope", Project: "alpha"}, "/k/live.yaml", []string{"gardens"}},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			opts := testOptions(fake.Landscape())
+			opts.StartTarget = &c.target
+			tm := startApp(t, opts)
+			waitFor(t, tm, c.until)
+			if got := titles(quitAndSave(t, tm)); !reflect.DeepEqual(got, c.want) {
+				t.Fatalf("stack %v, want %v", got, c.want)
+			}
+		})
 	}
 }

@@ -12,6 +12,7 @@ import (
 
 // fakeGardenctl mimics the parts of gardenctl that gtui uses: it keeps the
 // target per GCTL_SESSION_ID under $TMPDIR/garden/sessions/<id>.
+// `target view -o json` prints the stored target.
 // FAKE_RESTRICTED=1 makes `target` ask for confirmation on stdin;
 // FAKE_TARGET_ERROR=<msg> makes `target` fail.
 const fakeGardenctl = `#!/bin/sh
@@ -22,6 +23,20 @@ case "$1" in
   version) echo '{"gitVersion":"v2.16.0","gitCommit":"abc"}' ;;
   target)
     need_sid
+    if [ "$2" = view ]; then
+      [ -f "$dir/target" ] || { echo '{}'; exit 0; }
+      g= p= sd= sh= cp=false
+      set -- $(cat "$dir/target")
+      while [ $# -gt 0 ]; do
+        case "$1" in
+          --garden) g=$2; shift ;; --project) p=$2; shift ;; --seed) sd=$2; shift ;;
+          --shoot) sh=$2; shift ;; --control-plane) cp=true ;;
+        esac
+        shift
+      done
+      printf '{"garden":"%s","project":"%s","seed":"%s","shoot":"%s","controlPlane":%s}\n' "$g" "$p" "$sd" "$sh" "$cp"
+      exit 0
+    fi
     if [ -n "$FAKE_TARGET_ERROR" ]; then echo "Error: $FAKE_TARGET_ERROR" >&2; exit 1; fi
     if [ -n "$FAKE_RESTRICTED" ]; then
       echo "Access restriction: this cluster is restricted"

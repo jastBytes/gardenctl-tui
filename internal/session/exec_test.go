@@ -43,6 +43,17 @@ func TestExecRunnerWithFakeGardenctl(t *testing.T) {
 		t.Fatalf("target args: %q", got)
 	}
 
+	// A shell in session s2 has that target.
+	shell := &Manager{Runner: m.Runner, BaseEnv: s2.Env}
+	cur, ok, err := shell.CurrentTarget(ctx)
+	if err != nil || !ok || cur != (Target{Garden: "g", Project: "p", Shoot: "b", ControlPlane: true}) {
+		t.Fatalf("current target %+v %v %v", cur, ok, err)
+	}
+	fresh := &Manager{Runner: m.Runner, BaseEnv: append(os.Environ(), "TMPDIR="+tmp, EnvSessionID+"=untargeted")}
+	if _, ok, err := fresh.CurrentTarget(ctx); ok || err != nil {
+		t.Fatalf("untargeted shell: ok=%v err=%v", ok, err)
+	}
+
 	if err := m.Cleanup(); err != nil {
 		t.Fatal(err)
 	}

@@ -53,6 +53,9 @@ type GTUI struct {
 	Notify []string `json:"notify"`
 	// FavoritesOnStart opens the favorites view on start (if there are favorites).
 	FavoritesOnStart bool `json:"favoritesOnStart,omitempty"`
+	// StartAtTarget opens gtui at the target of the calling shell's gardenctl
+	// session, if it has one.
+	StartAtTarget bool `json:"startAtTarget"`
 }
 
 // Notification kinds for Notify.
@@ -106,6 +109,7 @@ func DefaultGTUI() *GTUI {
 		Gardenctl:       "gardenctl",
 		Watch:           true,
 		Notify:          []string{NotifyBell},
+		StartAtTarget:   true,
 	}
 }
 

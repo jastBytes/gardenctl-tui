@@ -105,10 +105,13 @@ func (t *table) selected() (row, bool) {
 	return t.visible[t.cursor], true
 }
 
-// selectKey moves the cursor to the visible row with key and reports whether it exists.
+// selectKey moves the cursor to the visible row with key and reports whether
+// it exists. "*/name" matches the first "<anything>/name" (a shoot of
+// unknown namespace).
 func (t *table) selectKey(key string) bool {
+	suffix, anyNamespace := strings.CutPrefix(key, "*/")
 	for i, r := range t.visible {
-		if r.key == key {
+		if r.key == key || anyNamespace && strings.HasSuffix(r.key, "/"+suffix) {
 			t.cursor = i
 			return true
 		}
