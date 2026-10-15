@@ -264,9 +264,19 @@ keeps Go modules and GitHub Actions up to date.
 
 ### Releasing
 
-Tag `vX.Y.Z` and push the tag; the release workflow runs goreleaser. Before the
-first release create the `jastbytes/homebrew-tap` repository and add a
-`HOMEBREW_TAP_GITHUB_TOKEN` secret that can push to it.
+[Release Drafter](https://github.com/release-drafter/release-drafter) keeps a
+draft release with the merged pull requests, grouped by label (`enhancement`,
+`bug`, `documentation`, `dependencies`; `skip-changelog` leaves a pull request
+out). It proposes the next version: `enhancement` or `minor` bumps the minor
+version, `major` the major version, anything else the patch version. Pull
+requests are labeled from their files, branch and title where possible.
+
+To release, push the tag the draft proposes (e.g. `git tag v0.2.0 && git push
+origin v0.2.0`). The release workflow runs goreleaser, which publishes that
+draft with the binaries and updates the Homebrew cask. A tag without a matching
+draft gets a release with goreleaser's own changelog. The release workflow
+needs a `HOMEBREW_TAP_GITHUB_TOKEN` secret that can push to
+`jastbytes/homebrew-tap`.
 
 ## Relation to gardenctl
 

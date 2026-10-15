@@ -1,0 +1,58 @@
+# Release Drafter keeps a draft release up to date with the pull requests merged
+# into main. Its name must match goreleaser's release name ("{{ .Tag }}") so the
+# release workflow publishes this draft (see .goreleaser.yaml, release).
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+categories:
+  - title: '🚀 Features'
+    semver-increment: minor
+    when:
+      labels: ['enhancement', 'feature']
+  - title: '🐛 Bug fixes'
+    when:
+      labels: ['bug', 'fix']
+  - title: '📖 Documentation'
+    when:
+      label: 'documentation'
+  - title: '📦 Dependencies'
+    collapse-after: 5
+    when:
+      label: 'dependencies'
+  - type: 'pre-exclude'
+    when:
+      label: 'skip-changelog'
+  - type: 'version-resolver'
+    semver-increment: 'major'
+    when:
+      label: 'major'
+  - type: 'version-resolver'
+    semver-increment: 'minor'
+    when:
+      label: 'minor'
+  - type: 'version-resolver'
+    semver-increment: 'patch'
+change-template: '- $TITLE (#$NUMBER) $AUTHORS'
+# Add # and @ to prevent mentions. Add ` to prevent code blocks.
+change-title-escapes: '\<*_&'
+template: |
+  ## Changes
+
+  $CHANGES
+
+  **Full changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
+
+autolabeler:
+  - labels: ['documentation']
+    files:
+      - '*.md'
+      - 'docs/**'
+  - labels: ['bug']
+    branch:
+      - '/^fix\/.+/'
+    title:
+      - '/^fix/i'
+  - labels: ['enhancement']
+    branch:
+      - '/^feat(ure)?\/.+/'
+    title:
+      - '/^(feat|add)/i'
