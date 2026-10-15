@@ -3,6 +3,7 @@ linters:
   enable:
     - errorlint
     - gocritic
+    - gosec
     - misspell
     - revive
     - unconvert
@@ -17,6 +18,11 @@ linters:
   exclusions:
     presets:
       - std-error-handling
+    rules:
+      # Tests read files they wrote into their own temp dirs.
+      - path: _test\.go
+        linters:
+          - gosec
 formatters:
   enable:
     - gofmt
