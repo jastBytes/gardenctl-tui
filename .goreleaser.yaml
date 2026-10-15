@@ -31,6 +31,12 @@ archives:
 checksum:
   name_template: checksums.txt
 
+release:
+  # Publish the draft that Release Drafter prepared for this tag and keep its
+  # notes; without a draft goreleaser creates the release with the changelog below.
+  use_existing_draft: true
+  mode: keep-existing
+
 changelog:
   sort: asc
   filters:
