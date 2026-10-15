@@ -1,5 +1,9 @@
 # gtui – a terminal UI for gardenctl
 
+[![CI](https://img.shields.io/github/actions/workflow/status/jastBytes/gardenctl-tui/ci.yml?branch=main&label=CI)](https://github.com/jastBytes/gardenctl-tui/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/jastBytes/gardenctl-tui)](https://github.com/jastBytes/gardenctl-tui/releases/latest)
+[![License](https://img.shields.io/github/license/jastBytes/gardenctl-tui)](LICENSE)
+
 `gtui` lets you browse your Gardener landscapes (garden → project → shoot, or
 garden → seed → shoot), see the health of every shoot at a glance, and start a
 shell, `k9s`, `kubectl` or any other tool **already targeted at the selected
@@ -15,6 +19,12 @@ Your own shell is never touched. Every launched tool gets its own gardenctl
 session (`GCTL_SESSION_ID`) and its own `KUBECONFIG`, so you can have k9s on one
 shoot and a shell on another at the same time, and your parent shell keeps
 whatever it was targeting before.
+
+> [!NOTE]
+> gtui has been vibe coded: most of its code was written with an AI coding
+> assistant. It is covered by tests and CI, but use it at your own risk. The
+> tools it starts get real cluster credentials, so try `gtui --demo` first and
+> please report anything odd.
 
 ## Requirements
 
