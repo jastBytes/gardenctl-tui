@@ -74,6 +74,25 @@ func TestTableShrinksColumns(t *testing.T) {
 	}
 }
 
+func TestTableDropsOptionalColumns(t *testing.T) {
+	tb := newTable(column{title: "name"}, column{title: "extra", drop: 1}, column{title: "more", drop: 2}, column{title: "status"})
+	tb.setRows([]row{{key: "1", cells: []string{"shoot", "xxxxxxxxxx", "yyyyyyyyyy", "healthy"}}})
+	if w := tb.widths(60); w[1] < 0 || w[2] < 0 {
+		t.Fatalf("enough room, yet columns hidden: %v", w)
+	}
+	if w := tb.widths(30); w[1] < 0 || w[2] != -1 {
+		t.Fatalf("width 30 should hide only the most optional column: %v", w)
+	}
+	w := tb.widths(16)
+	if w[1] != -1 || w[2] != -1 || w[0] < 5 || w[3] < 7 {
+		t.Fatalf("width 16 should hide both optional columns: %v", w)
+	}
+	out := tb.view(18, 3)
+	if strings.Contains(out, "EXTRA") || !strings.Contains(out, "STATUS") {
+		t.Fatalf("hidden column rendered:\n%s", out)
+	}
+}
+
 func TestWrap(t *testing.T) {
 	got := wrap("one two three four five", 10, "> ")
 	if got != "> one two\n> three four\n> five" {

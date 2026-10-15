@@ -78,7 +78,7 @@ func TestFavoritesOnStart(t *testing.T) {
 	opts := favoriteOptions(t, c, &n)
 	opts.Config.FavoritesOnStart = true
 	tm := startApp(t, opts)
-	waitFor(t, tm, "● Healthy") // live status of api-gw in the favorites view
+	waitFor(t, tm, "✓ Healthy") // live status of api-gw in the favorites view
 	send(tm, "*")               // no favorites left: the monitor stops watching
 	waitUntil(t, func() bool { return c.Watchers() == 0 })
 	app := quitAndSave(t, tm)
@@ -109,5 +109,24 @@ func TestChangedRowsAreMarked(t *testing.T) {
 	app.Update(rebuildMsg{viewID: app.top().id()})
 	if strings.Contains(app.View(), "▮") {
 		t.Fatalf("highlight did not expire:\n%s", app.View())
+	}
+}
+
+func TestRecentTargetsGetStatus(t *testing.T) {
+	c := fake.Landscape()
+	var n notes
+	opts := favoriteOptions(t, c, &n)
+	db := session.Target{Garden: "dev", Project: "beta", Shoot: "db", Namespace: "garden-beta"}
+	if err := opts.State.AddRecent(db, "k9s"); err != nil {
+		t.Fatal(err)
+	}
+	tm := startApp(t, opts)
+	waitFor(t, tm, "live")
+	waitUntil(t, func() bool { return c.Watchers() == 2 }) // garden-alpha (favorite) and garden-beta (recent)
+	send(tm, "ctrl+r")
+	waitFor(t, tm, "✗ Error") // dev/beta/db is only a recent target
+	_ = tm.Quit()
+	if got := n.all(); len(got) != 0 {
+		t.Fatalf("recent targets must not notify: %q", got)
 	}
 }

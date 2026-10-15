@@ -185,6 +185,8 @@ func (a *App) startTool(req launchReq, sess *session.Session) tea.Cmd {
 	var saveErr tea.Cmd
 	if err := a.state.AddRecent(req.target, req.tool.Name); err != nil {
 		saveErr = setStatus("saving recent targets failed: "+err.Error(), true)
+	} else {
+		saveErr = a.syncMonitor() // the new recent target may be in another project
 	}
 	if a.newWindow {
 		a.busy = ""

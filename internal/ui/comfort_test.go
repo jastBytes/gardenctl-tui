@@ -55,7 +55,7 @@ func TestFavoritesAndRecent(t *testing.T) {
 	send(tm, "down", "*")
 	waitFor(t, tm, "★ batch")
 	send(tm, "ctrl+r")
-	waitFor(t, tm, "● Error") // status of dev/beta/db
+	waitFor(t, tm, "✗ Error") // status of dev/beta/db
 	app := snapshot(t, tm)
 	if _, ok := app.top().(*recentView); !ok {
 		t.Fatalf("top = %T", app.top())

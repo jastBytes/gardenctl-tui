@@ -1,7 +1,7 @@
  gtui  gardens › dev seeds                                                         auto-refresh off 
    SEED     PROVIDER  REGION        STATUS                                                          
- ▸ aws-eu1  aws       eu-central-1  ● Healthy                                                       
-   gcp-us1  gcp       us-east1      ● Progressing                                                   
+ ▸ aws-eu1  aws       eu-central-1  ✓ Healthy                                                       
+   gcp-us1  gcp       us-east1      ⟳ Progressing                                                   
                                                                                                     
                                                                                                     
                                                                                                     

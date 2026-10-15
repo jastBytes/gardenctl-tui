@@ -10,6 +10,7 @@ import (
 	"time"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Status is the aggregated health of a shoot or seed.
@@ -83,6 +84,36 @@ type Shoot struct {
 	Constraints []Condition
 	LastErrors  []string
 	Created     time.Time
+
+	// Domain is the shoot's DNS domain; APIServer the external API server URL.
+	Domain    string
+	APIServer string
+	Workers   []Worker
+	// MaintenanceWindow is e.g. "22:00-23:00 +0000" ("" if unset).
+	MaintenanceWindow string
+	// AutoUpdate lists what maintenance updates automatically ("Kubernetes", "machine images").
+	AutoUpdate []string
+	// HibernationSchedules are e.g. "00 20 * * 1-5 → 00 08 * * 1-5 (Europe/Berlin)".
+	HibernationSchedules []string
+	Rotations            []Rotation
+}
+
+// Worker summarises a worker pool.
+type Worker struct {
+	Name        string
+	MachineType string
+	// Image is "name version".
+	Image    string
+	Min, Max int32
+	Zones    []string
+}
+
+// Rotation is the state of one credentials rotation.
+type Rotation struct {
+	Name string
+	// Phase is the rotation phase, e.g. "Prepared" ("" for kinds without phases).
+	Phase         string
+	LastCompleted time.Time
 }
 
 // LastOperation summarises shoot.status.lastOperation.
@@ -169,6 +200,43 @@ func ShootFromAPI(s *gardencorev1beta1.Shoot) Shoot {
 			Updated:  lo.LastUpdateTime.Time,
 		}
 	}
+	if s.Spec.DNS != nil && s.Spec.DNS.Domain != nil {
+		out.Domain = *s.Spec.DNS.Domain
+	}
+	for _, a := range s.Status.AdvertisedAddresses {
+		if a.Name == "external" {
+			out.APIServer = a.URL
+		}
+	}
+	for _, w := range s.Spec.Provider.Workers {
+		worker := Worker{Name: w.Name, MachineType: w.Machine.Type, Min: w.Minimum, Max: w.Maximum, Zones: w.Zones}
+		if img := w.Machine.Image; img != nil {
+			worker.Image = img.Name
+			if img.Version != nil {
+				worker.Image += " " + *img.Version
+			}
+		}
+		out.Workers = append(out.Workers, worker)
+	}
+	if m := s.Spec.Maintenance; m != nil {
+		if tw := m.TimeWindow; tw != nil {
+			out.MaintenanceWindow = formatWindow(tw.Begin, tw.End)
+		}
+		if au := m.AutoUpdate; au != nil {
+			if au.KubernetesVersion {
+				out.AutoUpdate = append(out.AutoUpdate, "Kubernetes")
+			}
+			if au.MachineImageVersion == nil || *au.MachineImageVersion {
+				out.AutoUpdate = append(out.AutoUpdate, "machine images")
+			}
+		}
+	}
+	if h := s.Spec.Hibernation; h != nil {
+		for _, sc := range h.Schedules {
+			out.HibernationSchedules = append(out.HibernationSchedules, formatSchedule(sc))
+		}
+	}
+	out.Rotations = rotations(s.Status.Credentials)
 	out.Conditions = convertConditions(s.Status.Conditions)
 	out.Constraints = convertConditions(s.Status.Constraints)
 	for _, e := range s.Status.LastErrors {
@@ -266,4 +334,64 @@ func worst(a, b Status) Status {
 		return b
 	}
 	return a
+}
+
+// formatWindow turns "220000+0100" and "230000+0100" into "22:00-23:00 +0100".
+func formatWindow(begin, end string) string {
+	hm := func(t string) string {
+		if len(t) < 4 {
+			return t
+		}
+		return t[0:2] + ":" + t[2:4]
+	}
+	zone := ""
+	if len(begin) > 6 {
+		zone = " " + begin[6:]
+	}
+	return hm(begin) + "-" + hm(end) + zone
+}
+
+func formatSchedule(sc gardencorev1beta1.HibernationSchedule) string {
+	deref := func(p *string) string {
+		if p == nil {
+			return "-"
+		}
+		return *p
+	}
+	out := "hibernate " + deref(sc.Start) + ", wake up " + deref(sc.End)
+	if sc.Location != nil {
+		out += " (" + *sc.Location + ")"
+	}
+	return out
+}
+
+func rotations(c *gardencorev1beta1.ShootCredentials) []Rotation {
+	if c == nil || c.Rotation == nil {
+		return nil
+	}
+	r := c.Rotation
+	var out []Rotation
+	add := func(name string, phase gardencorev1beta1.CredentialsRotationPhase, done *metav1.Time) {
+		rot := Rotation{Name: name, Phase: string(phase)}
+		if done != nil {
+			rot.LastCompleted = done.Time
+		}
+		out = append(out, rot)
+	}
+	if ca := r.CertificateAuthorities; ca != nil {
+		add("Certificate authorities", ca.Phase, ca.LastCompletionTime)
+	}
+	if sa := r.ServiceAccountKey; sa != nil {
+		add("Service account key", sa.Phase, sa.LastCompletionTime)
+	}
+	if e := r.ETCDEncryptionKey; e != nil {
+		add("ETCD encryption key", e.Phase, e.LastCompletionTime)
+	}
+	if k := r.SSHKeypair; k != nil {
+		add("SSH key pair", "", k.LastCompletionTime)
+	}
+	if o := r.Observability; o != nil {
+		add("Observability", "", o.LastCompletionTime)
+	}
+	return out
 }

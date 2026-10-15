@@ -14,8 +14,21 @@ func demoLandscape() *fake.Client {
 	c := fake.Landscape()
 	c.Delay = 300 * time.Millisecond
 	// The fake uses fixed timestamps; recent ones look more realistic.
+	now := time.Now()
 	for i := range c.Shoots {
-		c.Shoots[i].LastOp.Updated = time.Now().Add(-time.Duration(i+1) * 47 * time.Minute)
+		s := &c.Shoots[i]
+		s.LastOp.Updated = now.Add(-time.Duration(i+1) * 47 * time.Minute)
+		s.Created = now.Add(-time.Duration(30+i*11) * 24 * time.Hour)
+		for _, conds := range [][]gardener.Condition{s.Conditions, s.Constraints} {
+			for j := range conds {
+				conds[j].Since = now.Add(-time.Duration(2+j) * time.Hour)
+			}
+		}
+		for j := range s.Rotations {
+			if !s.Rotations[j].LastCompleted.IsZero() {
+				s.Rotations[j].LastCompleted = now.Add(-41 * 24 * time.Hour)
+			}
+		}
 	}
 	go func() {
 		for range time.Tick(600 * time.Millisecond) {
