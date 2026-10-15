@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -105,12 +106,18 @@ func run(args []string) error {
 		}
 	}()
 
+	var start *session.Target
+	if gtuiCfg.StartAtTarget && !o.demo {
+		start = shellTarget(sessions)
+	}
+
 	app := ui.New(ui.Options{
-		Gardens:  gardens,
-		Clients:  ui.ClientFactory(newClient),
-		Config:   gtuiCfg,
-		Sessions: sessions,
-		State:    store,
+		Gardens:     gardens,
+		Clients:     ui.ClientFactory(newClient),
+		Config:      gtuiCfg,
+		Sessions:    sessions,
+		State:       store,
+		StartTarget: start,
 	})
 	// No signal context here: a Ctrl+C inside a launched tool must not quit gtui.
 	// Bubble Tea handles signals itself and ignores them while a tool runs.
@@ -122,6 +129,18 @@ func run(args []string) error {
 		fmt.Fprintln(os.Stderr, "gtui: saving the location failed:", serr)
 	}
 	return err
+}
+
+// shellTarget returns the gardenctl target of the calling shell, or nil if it
+// has none (or gardenctl cannot tell, e.g. without a session ID).
+func shellTarget(sessions *session.Manager) *session.Target {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	t, ok, err := sessions.CurrentTarget(ctx)
+	if err != nil || !ok {
+		return nil
+	}
+	return &t
 }
 
 // loadState opens ~/.garden/gtui-state.yaml (recent targets, favorites, location).

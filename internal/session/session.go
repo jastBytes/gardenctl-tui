@@ -174,6 +174,33 @@ func (m *Manager) Version(ctx context.Context) (string, error) {
 	return info.GitVersion, nil
 }
 
+// CurrentTarget returns the target of the calling shell's gardenctl session
+// (`gardenctl target view -o json` with gtui's own environment, i.e. the
+// shell's GCTL_SESSION_ID or TERM_SESSION_ID). ok is false when the shell
+// has no garden targeted. The namespace of a shoot is not known.
+func (m *Manager) CurrentTarget(ctx context.Context) (t Target, ok bool, err error) {
+	env := m.BaseEnv
+	if env == nil {
+		env = os.Environ()
+	}
+	stdout, stderr, err := m.Runner.Run(ctx, env, "target", "view", "-o", "json")
+	if err != nil {
+		return Target{}, false, GardenctlError("target view", stderr, err)
+	}
+	var v struct {
+		Garden       string `json:"garden"`
+		Project      string `json:"project"`
+		Seed         string `json:"seed"`
+		Shoot        string `json:"shoot"`
+		ControlPlane bool   `json:"controlPlane"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &v); err != nil {
+		return Target{}, false, fmt.Errorf("parse gardenctl target: %w", err)
+	}
+	t = Target{Garden: v.Garden, Project: v.Project, Seed: v.Seed, Shoot: v.Shoot, ControlPlane: v.ControlPlane}
+	return t, t.Garden != "", nil
+}
+
 // Keep excludes the session from Cleanup, e.g. because a tool in another
 // terminal window still uses it after gtui exits.
 func (m *Manager) Keep(s *Session) {

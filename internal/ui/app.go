@@ -69,6 +69,8 @@ type Options struct {
 	WatchOptions gardener.WatchOptions
 	// Notify reports a favorite shoot that turned red (default: as configured in Notify).
 	Notify func(title, body string)
+	// StartTarget is the shell's gardenctl target; gtui opens there (see startAtTarget).
+	StartTarget *session.Target
 }
 
 // App is the root model: navigation stack, status line and auto-refresh.
@@ -143,6 +145,12 @@ func New(opts Options) *App {
 	a.mon = newMonitor(a.newID())
 	a.stack = []view{newGardensView(a)}
 	a.startRestore()
+	if t := opts.StartTarget; t != nil {
+		if loc := a.targetLocation(*t); loc != nil {
+			// The shell's current target wins over the remembered location.
+			a.restore, a.restoreView = loc, a.stack[0].id()
+		}
+	}
 	// A single garden needs no choice; esc still leads back to the gardens list.
 	if len(a.restore) == 0 && len(opts.Gardens) == 1 {
 		a.stack = append(a.stack, newProjectsView(a, opts.Gardens[0]))

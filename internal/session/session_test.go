@@ -255,3 +255,34 @@ func TestCompareVersions(t *testing.T) {
 		}
 	}
 }
+
+func TestCurrentTarget(t *testing.T) {
+	r := newMock()
+	m := &Manager{Runner: r, BaseEnv: []string{"GCTL_SESSION_ID=shell"}}
+	set := func(stdout string, err error) {
+		r.results["target"] = struct {
+			stdout, stderr string
+			err            error
+		}{stdout: stdout, err: err}
+	}
+
+	set(`{"garden":"dev","project":"alpha","shoot":"web","controlPlane":true}`, nil)
+	got, ok, err := m.CurrentTarget(context.Background())
+	want := Target{Garden: "dev", Project: "alpha", Shoot: "web", ControlPlane: true}
+	if err != nil || !ok || got != want {
+		t.Fatalf("got %+v %v %v", got, ok, err)
+	}
+	last := r.calls[len(r.calls)-1]
+	if strings.Join(last.args, " ") != "target view -o json" || envValue(last.env, EnvSessionID)[0] != "shell" {
+		t.Fatalf("call %+v: must run in the shell's session", last)
+	}
+
+	set(`{}`, nil)
+	if _, ok, err := m.CurrentTarget(context.Background()); ok || err != nil {
+		t.Fatalf("empty target: ok=%v err=%v", ok, err)
+	}
+	set("", errors.New("exit status 1"))
+	if _, ok, err := m.CurrentTarget(context.Background()); ok || err == nil {
+		t.Fatalf("gardenctl error: ok=%v err=%v", ok, err)
+	}
+}

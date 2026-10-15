@@ -129,6 +129,9 @@ func TestWatchOption(t *testing.T) {
 	if err != nil || !cfg.Watch {
 		t.Fatalf("watch should default to true: %v %+v", err, cfg)
 	}
+	if !cfg.StartAtTarget {
+		t.Fatal("startAtTarget should default to true")
+	}
 	if len(cfg.Notify) != 1 || cfg.Notify[0] != NotifyBell {
 		t.Fatalf("notify should default to the bell: %v", cfg.Notify)
 	}

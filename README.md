@@ -141,6 +141,7 @@ newWindow: false         # start tools in a new terminal window (toggle: w)
 terminal: []             # command that opens a window, e.g. [tmux, new-window]
 gardenctl: gardenctl     # gardenctl binary
 rememberLocation: false  # reopen the view gtui was quit in
+startAtTarget: true      # open at the shell's gardenctl target
 tools:
   - key: "s"
     name: "Shell"
@@ -173,6 +174,13 @@ tools:
 - Each tool also gets a control-plane key, by default the upper-case key. Set
   `controlPlaneKey` to choose another one.
 - The keys `q r a l h p w o v y / ? * !` are reserved.
+- With `startAtTarget: true` (the default), gtui asks gardenctl for the target
+  of the shell it was started from (`gardenctl target view`) and opens there:
+  the shoot's details for a targeted shoot (also for a control-plane target),
+  the shoot list of a targeted project or seed, or the projects of a targeted
+  garden. This wins over `rememberLocation`. Without a target, or if gardenctl
+  cannot tell (no `GCTL_SESSION_ID` or `TERM_SESSION_ID`), gtui starts as
+  usual.
 - With `rememberLocation: true`, gtui saves where you were when you quit
   (garden, project or seed, shoot list or shoot details, and the selected row)
   and opens that view again on the next start. If an item no longer exists,

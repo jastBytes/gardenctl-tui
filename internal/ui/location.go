@@ -8,6 +8,7 @@ import (
 
 	"github.com/jastbytes/gardenctl-tui/internal/config"
 	"github.com/jastbytes/gardenctl-tui/internal/gardener"
+	"github.com/jastbytes/gardenctl-tui/internal/session"
 	"github.com/jastbytes/gardenctl-tui/internal/state"
 )
 
@@ -59,6 +60,35 @@ func (a *App) startRestore() {
 	}
 	a.restore = loc
 	a.restoreView = a.stack[0].id()
+}
+
+// targetLocation returns the navigation path to t: the shoot's details, or the
+// shoot list of a project or seed, or the projects of a garden. It returns nil
+// if the garden is unknown (matched by name or alias).
+func (a *App) targetLocation(t session.Target) []state.Crumb {
+	garden := ""
+	for _, g := range a.opts.Gardens {
+		if g.Name == t.Garden || g.Alias != "" && g.Alias == t.Garden {
+			garden = g.Name
+		}
+	}
+	if garden == "" {
+		return nil
+	}
+	loc := []state.Crumb{{View: kindGardens, Selected: garden}}
+	switch {
+	case t.Project != "":
+		loc = append(loc, state.Crumb{View: kindProjects, Selected: t.Project})
+	case t.Seed != "":
+		loc = append(loc, state.Crumb{View: kindSeeds, Selected: t.Seed})
+	default:
+		return append(loc, state.Crumb{View: kindProjects})
+	}
+	if t.Shoot == "" {
+		return append(loc, state.Crumb{View: kindShoots})
+	}
+	// gardenctl names the project, not the namespace: match the shoot by name.
+	return append(loc, state.Crumb{View: kindShoots, Selected: "*/" + t.Shoot}, state.Crumb{View: kindDetails})
 }
 
 // stopRestore cancels a running restoration (e.g. when the user takes over).
