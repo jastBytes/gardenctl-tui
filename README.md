@@ -28,7 +28,7 @@ whatever it was targeting before.
 ## Install
 
 ```sh
-# Homebrew (once the tap is published)
+# Homebrew
 brew install --cask jastbytes/tap/gtui
 
 # from source
