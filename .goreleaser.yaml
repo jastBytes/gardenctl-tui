@@ -32,9 +32,9 @@ checksum:
   name_template: checksums.txt
 
 release:
-  # Publish the draft that Release Drafter prepared for this tag and keep its
-  # notes; without a draft goreleaser creates the release with the changelog below.
-  use_existing_draft: true
+  # Publishing the Release Drafter draft creates the tag and runs this; goreleaser
+  # then adds the binaries to that release and keeps its notes. A tag pushed
+  # without a release gets one with the changelog below.
   mode: keep-existing
 
 changelog:
