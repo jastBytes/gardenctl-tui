@@ -28,7 +28,7 @@ whatever it was targeting before.
 ## Install
 
 ```sh
-# Homebrew (once the tap is published)
+# Homebrew
 brew install --cask jastbytes/tap/gtui
 
 # from source
@@ -271,12 +271,12 @@ out). It proposes the next version: `enhancement` or `minor` bumps the minor
 version, `major` the major version, anything else the patch version. Pull
 requests are labeled from their files, branch and title where possible.
 
-To release, push the tag the draft proposes (e.g. `git tag v0.2.0 && git push
-origin v0.2.0`). The release workflow runs goreleaser, which publishes that
-draft with the binaries and updates the Homebrew cask. A tag without a matching
-draft gets a release with goreleaser's own changelog. The release workflow
-needs a `HOMEBREW_TAP_GITHUB_TOKEN` secret that can push to
-`jastbytes/homebrew-tap`.
+To release, edit the draft on GitHub if needed and publish it. Publishing
+creates the tag, and the release workflow runs goreleaser, which adds the
+binaries to that release (keeping its notes) and updates the Homebrew cask. A
+tag pushed without publishing a release gets a release with goreleaser's own
+changelog. The release workflow needs a `HOMEBREW_TAP_GITHUB_TOKEN` secret that
+can push to `jastbytes/homebrew-tap`.
 
 ## Relation to gardenctl
 
