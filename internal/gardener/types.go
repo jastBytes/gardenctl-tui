@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -196,7 +197,7 @@ func ShootFromAPI(s *gardencorev1beta1.Shoot) Shoot {
 			Type:     string(lo.Type),
 			State:    string(lo.State),
 			Progress: lo.Progress,
-			Message:  lo.Description,
+			Message:  cleanText(lo.Description),
 			Updated:  lo.LastUpdateTime.Time,
 		}
 	}
@@ -240,7 +241,7 @@ func ShootFromAPI(s *gardencorev1beta1.Shoot) Shoot {
 	out.Conditions = convertConditions(s.Status.Conditions)
 	out.Constraints = convertConditions(s.Status.Constraints)
 	for _, e := range s.Status.LastErrors {
-		out.LastErrors = append(out.LastErrors, e.Description)
+		out.LastErrors = append(out.LastErrors, cleanText(e.Description))
 	}
 	out.Status = shootStatus(s)
 	return out
@@ -252,8 +253,8 @@ func convertConditions(in []gardencorev1beta1.Condition) []Condition {
 		out = append(out, Condition{
 			Type:    string(c.Type),
 			Status:  string(c.Status),
-			Reason:  c.Reason,
-			Message: c.Message,
+			Reason:  cleanText(c.Reason),
+			Message: cleanText(c.Message),
 			Since:   c.LastTransitionTime.Time,
 		})
 	}
@@ -394,4 +395,16 @@ func rotations(c *gardencorev1beta1.ShootCredentials) []Rotation {
 		add("Observability", "", o.LastCompletionTime)
 	}
 	return out
+}
+
+// cleanText removes control characters except newlines and tabs from free text
+// that gardenlet copies from elsewhere (cloud provider APIs, webhooks, the
+// shoot itself), so that it cannot send escape sequences to the terminal.
+func cleanText(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r != '\n' && r != '\t' && unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, s)
 }

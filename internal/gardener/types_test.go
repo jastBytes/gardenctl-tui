@@ -52,3 +52,18 @@ func TestShootDetails(t *testing.T) {
 		t.Errorf("rotations %+v", s.Rotations)
 	}
 }
+
+func TestShootTextWithoutControlCharacters(t *testing.T) {
+	evil := "boom\x1b]52;c;ZWNobw==\x07\r\u009b2J line\n\tnext"
+	s := ShootFromAPI(shoot("garden-a", "s1", "seed-1", func(s *gardencorev1beta1.Shoot) {
+		s.Status.LastOperation = &gardencorev1beta1.LastOperation{Description: evil}
+		s.Status.LastErrors = []gardencorev1beta1.LastError{{Description: evil}}
+		s.Status.Conditions = []gardencorev1beta1.Condition{{Type: "APIServerAvailable", Reason: evil, Message: evil}}
+	}))
+	const want = "boom]52;c;ZWNobw==2J line\n\tnext"
+	for _, got := range []string{s.LastOp.Message, s.LastErrors[0], s.Conditions[0].Reason, s.Conditions[0].Message} {
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	}
+}
