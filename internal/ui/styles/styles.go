@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jan Steffen
+// SPDX-License-Identifier: Apache-2.0
+
 // Package styles holds the Lip Gloss styles used by the UI.
 package styles
 

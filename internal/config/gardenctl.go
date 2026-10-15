@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jan Steffen
+// SPDX-License-Identifier: Apache-2.0
+
 // Package config reads the gardenctl configuration and gtui's own configuration.
 package config
 

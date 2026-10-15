@@ -273,3 +273,9 @@ first release create the `jastbytes/homebrew-tap` repository and add a
 gtui is a separate tool that only uses gardenctl's CLI. Whether it should rather
 become `gardenctl tui` is an open question for the gardenctl maintainers; see
 [docs/upstream-issue.md](docs/upstream-issue.md) for the proposal.
+
+## License
+
+gtui is licensed under the [Apache License 2.0](LICENSE). See
+[CONTRIBUTING.md](CONTRIBUTING.md) to contribute and [SECURITY.md](SECURITY.md)
+to report vulnerabilities.

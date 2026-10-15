@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jan Steffen
+// SPDX-License-Identifier: Apache-2.0
+
 // Package session prepares isolated gardenctl sessions for launched tools.
 package session
 

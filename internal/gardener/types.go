@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jan Steffen
+// SPDX-License-Identifier: Apache-2.0
+
 // Package gardener reads Projects, Shoots and Seeds from a garden cluster.
 package gardener
 

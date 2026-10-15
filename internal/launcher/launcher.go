@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Jan Steffen
+// SPDX-License-Identifier: Apache-2.0
+
 // Package launcher builds the commands for tools started against a target.
 package launcher
 
