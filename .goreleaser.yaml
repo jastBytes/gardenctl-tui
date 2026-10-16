@@ -56,9 +56,14 @@ homebrew_casks:
     description: Terminal UI for Gardener landscapes, built on gardenctl
     dependencies:
       - formula: gardener/tap/gardenctl-v2
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gtui"]
-          end
+    # Homebrew deprecated the raw Ruby `postflight` block that `hooks.post.install`
+    # renders, so the declarative `postflight_steps` stanza is written here instead.
+    # Switch to `hooks.post.install_steps` once a GoReleaser release supports it.
+    # `{{staged_path}}` is a Homebrew token; the outer braces stop GoReleaser from
+    # expanding it as one of its own templates.
+    custom_block: |
+      postflight_steps do
+        on_macos do
+          run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ "{{staged_path}}" }}/gtui"]
+        end
+      end
