@@ -1,0 +1,55 @@
+name: Bug report
+description: Something in gtui does not work as expected.
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please remove garden, project and shoot names or
+        kubeconfig details you do not want to make public. Security issues go
+        through [SECURITY.md](https://github.com/jastBytes/gardenctl-tui/blob/main/SECURITY.md) instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you see, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Does it also happen with `gtui --demo`?
+      placeholder: |
+        1. Start `gtui ...`
+        2. Press ...
+        3. See ...
+    validations:
+      required: true
+  - type: input
+    id: gtui-version
+    attributes:
+      label: gtui version
+      description: Output of `gtui --version`.
+    validations:
+      required: true
+  - type: input
+    id: gardenctl-version
+    attributes:
+      label: gardenctl version
+      description: Output of `gardenctl version`.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OS and terminal
+      placeholder: e.g. macOS 15, iTerm2 3.5
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, screenshots or additional context
+      description: Error messages, a screenshot of the TUI or relevant parts of your gtui config.
+      render: text
