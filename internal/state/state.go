@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sys/unix"
 	"sigs.k8s.io/yaml"
 
 	"github.com/jastbytes/gardenctl-tui/internal/session"
@@ -57,6 +58,8 @@ type file struct {
 }
 
 // Store holds recent targets and favorites and saves them to a YAML file.
+// Several gtui instances can share the file: every change is applied to the
+// file's current content under a file lock (see update).
 type Store struct {
 	mu   sync.Mutex
 	path string
@@ -70,17 +73,28 @@ func Load(path string) (*Store, error) {
 	if path == "" {
 		return s, nil
 	}
-	buf, err := os.ReadFile(path) // #nosec G304 -- gtui state file
-	if errors.Is(err, os.ErrNotExist) {
-		return s, nil
-	}
+	data, err := read(path)
 	if err != nil {
 		return nil, err
 	}
-	if err := yaml.Unmarshal(buf, &s.data); err != nil {
-		return nil, fmt.Errorf("parse %s: %w", path, err)
-	}
+	s.data = data
 	return s, nil
+}
+
+// read parses the file at path; a missing file yields empty data.
+func read(path string) (file, error) {
+	var data file
+	buf, err := os.ReadFile(path) // #nosec G304 -- gtui state file
+	if errors.Is(err, os.ErrNotExist) {
+		return data, nil
+	}
+	if err != nil {
+		return data, err
+	}
+	if err := yaml.Unmarshal(buf, &data); err != nil {
+		return data, fmt.Errorf("parse %s: %w", path, err)
+	}
+	return data, nil
 }
 
 // Recent returns the recent targets, newest first.
@@ -119,65 +133,83 @@ func (s *Store) Location() []Crumb {
 
 // SetLocation stores the navigation path and saves the store.
 func (s *Store) SetLocation(loc []Crumb) error {
-	s.mu.Lock()
-	s.data.Location = append([]Crumb(nil), loc...)
-	s.mu.Unlock()
-	return s.save()
+	loc = append([]Crumb(nil), loc...)
+	return s.update(func(d *file) { d.Location = loc })
 }
 
 // AddRecent records a launch of tool on t and saves the store.
 func (s *Store) AddRecent(t session.Target, tool string) error {
 	e := FromTarget(t)
 	e.Tool, e.Used = tool, s.now().UTC().Truncate(time.Second)
-	s.mu.Lock()
-	out := []Entry{e}
-	for _, r := range s.data.Recent {
-		if r.Key() != e.Key() && len(out) < MaxRecent {
-			out = append(out, r)
+	return s.update(func(d *file) {
+		out := []Entry{e}
+		for _, r := range d.Recent {
+			if r.Key() != e.Key() && len(out) < MaxRecent {
+				out = append(out, r)
+			}
 		}
-	}
-	s.data.Recent = out
-	s.mu.Unlock()
-	return s.save()
+		d.Recent = out
+	})
 }
 
 // ToggleFavorite adds or removes t from the favorites, saves, and returns the new state.
+// Whether t is added depends on what this store showed: if another instance
+// added t meanwhile, it stays a favorite.
 func (s *Store) ToggleFavorite(t session.Target) (bool, error) {
 	e := FromTarget(t)
-	s.mu.Lock()
-	var out []Entry
-	removed := false
-	for _, f := range s.data.Favorites {
-		if f.Key() == e.Key() {
-			removed = true
-			continue
+	add := !s.IsFavorite(t)
+	return add, s.update(func(d *file) {
+		var out []Entry
+		for _, f := range d.Favorites {
+			if f.Key() != e.Key() {
+				out = append(out, f)
+			}
 		}
-		out = append(out, f)
-	}
-	if !removed {
-		out = append(out, e)
-	}
-	s.data.Favorites = out
-	s.mu.Unlock()
-	return !removed, s.save()
+		if add {
+			out = append(out, e)
+		}
+		d.Favorites = out
+	})
 }
 
-func (s *Store) save() error {
+// update applies change to the store and saves it. With a file, change is
+// applied to the file's current content (changes of other gtui instances
+// included) while holding a lock on path.lock, so that no instance loses
+// the changes of another.
+func (s *Store) update(change func(*file)) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.path == "" {
+		change(&s.data)
 		return nil
 	}
-	s.mu.Lock()
-	buf, err := yaml.Marshal(s.data)
-	s.mu.Unlock()
+	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
+		return err
+	}
+	lock, err := os.OpenFile(s.path+".lock", os.O_CREATE|os.O_RDWR, 0o600) // #nosec G304 -- gtui state file
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
+	defer func() { _ = lock.Close() }() // closing releases the lock
+	if err := unix.Flock(int(lock.Fd()), unix.LOCK_EX); err != nil {
+		return fmt.Errorf("lock %s: %w", lock.Name(), err)
+	}
+	data, err := read(s.path)
+	if err != nil {
+		return err
+	}
+	change(&data)
+	buf, err := yaml.Marshal(data)
+	if err != nil {
 		return err
 	}
 	tmp := s.path + ".tmp"
 	if err := os.WriteFile(tmp, buf, 0o600); err != nil {
 		return err
 	}
-	return os.Rename(tmp, s.path)
+	if err := os.Rename(tmp, s.path); err != nil {
+		return err
+	}
+	s.data = data
+	return nil
 }

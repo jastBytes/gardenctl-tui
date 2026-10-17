@@ -6,6 +6,7 @@ package state
 import (
 	"fmt"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -109,5 +110,72 @@ func TestLocation(t *testing.T) {
 	}
 	if got := reloaded.Location(); len(got) != 2 || got[0] != loc[0] || got[1] != loc[1] {
 		t.Fatalf("location: %+v", got)
+	}
+}
+
+// Two gtui instances share the state file; neither may lose the other's changes.
+func TestSharedFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.yaml")
+	s1, _ := Load(path)
+	s2, _ := Load(path)
+	a := session.Target{Garden: "g", Project: "p", Shoot: "a", Namespace: "garden-p"}
+	b := session.Target{Garden: "g", Project: "p", Shoot: "b", Namespace: "garden-p"}
+
+	if _, err := s1.ToggleFavorite(a); err != nil {
+		t.Fatal(err)
+	}
+	// s2 has not seen that a is a favorite: adding it again keeps it.
+	if on, err := s2.ToggleFavorite(a); err != nil || !on {
+		t.Fatalf("toggle a in s2: %v, %v", on, err)
+	}
+	if _, err := s2.ToggleFavorite(b); err != nil {
+		t.Fatal(err)
+	}
+	if err := s1.AddRecent(a, "k9s"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s2.SetLocation([]Crumb{{View: "gardens"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f := got.Favorites(); len(f) != 2 || f[0].Shoot != "a" || f[1].Shoot != "b" {
+		t.Fatalf("favorites: %+v", f)
+	}
+	if r := got.Recent(); len(r) != 1 || r[0].Shoot != "a" {
+		t.Fatalf("recent: %+v", r)
+	}
+	if l := got.Location(); len(l) != 1 {
+		t.Fatalf("location: %+v", l)
+	}
+}
+
+func TestSharedFileConcurrent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.yaml")
+	const n = 10
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		s, err := Load(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := s.AddRecent(session.Target{Garden: "g", Project: "p", Shoot: fmt.Sprint(i)}, "x"); err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	got, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r := got.Recent(); len(r) != n {
+		t.Fatalf("got %d recent entries, want %d: %+v", len(r), n, r)
 	}
 }
