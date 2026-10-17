@@ -248,7 +248,10 @@ tools started in a window are not deleted when gtui exits, as the window may
 still use them.
 
 Recent targets, favorites and the last location are stored in
-`~/.garden/gtui-state.yaml`.
+`~/.garden/gtui-state.yaml`. Several gtui instances can run at the same time:
+each change is merged into the file's current content (under a lock on
+`gtui-state.yaml.lock`), so no instance drops the favorites or recent targets
+of another.
 
 ### Showing the target in your prompt
 
@@ -309,7 +312,8 @@ exit.
 - Read-only: no creating, changing or deleting shoots.
 - No resource views inside a cluster – that is what k9s is for.
 - Linux and macOS only (subshell start and env parsing for PowerShell come later).
-- Lists are loaded in full (no pagination); only shoots are watched.
+- Only shoots are listed in pages (500 at a time); projects and seeds are
+  loaded in full. Only shoots are watched.
 
 ## Development
 
