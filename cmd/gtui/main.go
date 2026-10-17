@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -123,6 +124,7 @@ func run(args []string) error {
 			fmt.Fprintln(os.Stderr, "gtui: cleanup of gardenctl sessions failed:", cerr)
 		}
 	}()
+	quitOnHangup := catchHangup()
 
 	var start *session.Target
 	if gtuiCfg.StartAtTarget && !o.demo && o.shoot == "" {
@@ -142,12 +144,31 @@ func run(args []string) error {
 	// Bubble Tea handles signals itself and ignores them while a tool runs.
 	// Restore stderr right after the UI so that the messages below reach the terminal.
 	restoreStderr := redirectStderr()
-	_, err = tea.NewProgram(app, tea.WithAltScreen()).Run()
+	p := tea.NewProgram(app, tea.WithAltScreen())
+	quitOnHangup(p)
+	_, err = p.Run()
 	restoreStderr()
 	if serr := app.SaveLocation(); serr != nil {
 		fmt.Fprintln(os.Stderr, "gtui: saving the location failed:", serr)
 	}
 	return err
+}
+
+// catchHangup catches SIGHUP (terminal window closed, SSH connection lost),
+// which Bubble Tea does not handle, from now until gtui exits. Otherwise gtui
+// would die without removing its gardenctl sessions, which hold kubeconfigs,
+// and without saving the location. Once the program is passed to quitOn, every
+// SIGHUP, including one caught before, quits it.
+func catchHangup() (quitOn func(p interface{ Quit() })) {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGHUP)
+	return func(p interface{ Quit() }) {
+		go func() {
+			for range ch {
+				p.Quit()
+			}
+		}()
+	}
 }
 
 // shellTarget returns the gardenctl target of the calling shell, or nil if it
