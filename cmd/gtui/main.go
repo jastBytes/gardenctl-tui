@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -21,6 +22,7 @@ import (
 	"github.com/jastbytes/gardenctl-tui/internal/session"
 	"github.com/jastbytes/gardenctl-tui/internal/state"
 	"github.com/jastbytes/gardenctl-tui/internal/ui"
+	"github.com/jastbytes/gardenctl-tui/internal/ui/styles"
 )
 
 var version = "dev"
@@ -29,6 +31,7 @@ type options struct {
 	gardenctlConfig string
 	gtuiConfig      string
 	garden          string
+	theme           string
 	dump            bool
 	demo            bool
 	version         bool
@@ -47,6 +50,7 @@ func parseFlags(args []string) (*options, error) {
 	fs.StringVar(&o.gardenctlConfig, "config", "", "gardenctl config file (default $GCTL_HOME/gardenctl-v2.yaml or ~/.garden/gardenctl-v2.yaml)")
 	fs.StringVar(&o.gtuiConfig, "gtui-config", "", "gtui config file (default ~/.garden/gtui.yaml)")
 	fs.StringVar(&o.garden, "garden", "", "only show this garden (identity or alias)")
+	fs.StringVar(&o.theme, "theme", "", "color theme, overrides gtui.yaml ("+strings.Join(styles.ThemeNames(), ", ")+")")
 	fs.BoolVar(&o.dump, "dump", false, "print gardens, projects and shoots as text and exit")
 	fs.BoolVar(&o.demo, "demo", false, "use a built-in fake landscape (no cluster access)")
 	fs.BoolVar(&o.version, "version", false, "print the version and exit")
@@ -92,6 +96,15 @@ func run(args []string) error {
 	gtuiCfg, err := config.LoadGTUI(gtuiPath)
 	if err != nil {
 		return err
+	}
+	if o.theme != "" {
+		if _, ok := styles.Themes[o.theme]; !ok {
+			return fmt.Errorf("--theme: unknown theme %q (%s)", o.theme, strings.Join(styles.ThemeNames(), ", "))
+		}
+		gtuiCfg.Theme = o.theme
+	}
+	if err := styles.Apply(gtuiCfg.Theme, gtuiCfg.Colors); err != nil {
+		return fmt.Errorf("%s: %w", gtuiPath, err)
 	}
 
 	store, err := loadState(o.demo)
