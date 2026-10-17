@@ -76,6 +76,7 @@ Flags: `--config` (gardenctl config file), `--gtui-config` (gtui config file),
 | `y` | copy the name, path, `gardenctl target` command or technical ID |
 | `v` | the shoot's YAML manifest (`y` there copies it) |
 | `ctrl+r` | favorites (with live status) and recent targets |
+| `ctrl+g` | go to a shoot by its technical ID (`shoot--<project>--<name>`), searched in all gardens |
 | `p` | toggle provider-env (cloud provider CLI credentials) for launched tools |
 | `w` | toggle where tools start: this terminal or a new terminal window |
 | `r` | refresh, `a` toggles auto-refresh |

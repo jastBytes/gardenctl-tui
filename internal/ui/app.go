@@ -208,6 +208,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case sessionReadyMsg, targetedMsg, toolExitedMsg, versionMsg:
 		return a, a.handleLaunchMsg(msg)
 
+	case gotoMsg:
+		return a, a.jumpTo(msg)
+
 	case popMsg:
 		a.popView()
 		return a, nil
@@ -276,6 +279,11 @@ func (a *App) handleKey(msg tea.KeyMsg) tea.Cmd {
 			return nil
 		}
 		return push(newRecentView(a))
+	case "ctrl+g":
+		// Pushed at once: a technical ID pasted right after ctrl+g must reach the input.
+		v := newGotoView(a)
+		a.stack = append(a.stack, v)
+		return v.init()
 	case "p":
 		a.providerEnv = !a.providerEnv
 		if a.providerEnv {

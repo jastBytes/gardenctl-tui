@@ -11,7 +11,8 @@
   │  tab   seeds of the garden         y      copy name, path, …     c kubectl                  │   
   │  A     all shoots of the garden    v      shoot YAML             C kubectl (control plane)  │   
   │  g/G   first / last                ctrl+r favorites & recent     f sofka                    │   
-  │                                    p      toggle provider-env    F sofka (control plane)    │   
+  │                                    ctrl+g go to technical ID     F sofka (control plane)    │   
+  │                                    p      toggle provider-env                               │   
   │                                    w      toggle new window                                 │   
   │                                    r      refresh                                           │   
   │                                    a      toggle auto-refresh                               │   
@@ -23,7 +24,6 @@
   │  Press any key to close.                                                                    │   
   │                                                                                             │   
   ╰─────────────────────────────────────────────────────────────────────────────────────────────╯   
-                                                                                                    
                                                                                                     
                                                                                                     
  enter projects · tab seeds · / filter · ? help · q quit                                            
