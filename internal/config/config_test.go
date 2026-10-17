@@ -158,3 +158,25 @@ func TestLoadGTUIValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestThemeColors(t *testing.T) {
+	p := write(t, t.TempDir(), "gtui.yaml", `
+theme: dracula
+colors:
+  accent: "#ff79c6"
+  selBg: {light: "#eeeeee", dark: "236"}
+`)
+	cfg, err := LoadGTUI(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Theme != "dracula" {
+		t.Fatalf("theme: %q", cfg.Theme)
+	}
+	if c := cfg.Colors["accent"]; c != (Color{Light: "#ff79c6", Dark: "#ff79c6"}) {
+		t.Fatalf("accent: %+v", c)
+	}
+	if c := cfg.Colors["selBg"]; c != (Color{Light: "#eeeeee", Dark: "236"}) {
+		t.Fatalf("selBg: %+v", c)
+	}
+}

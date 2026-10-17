@@ -4,6 +4,7 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -56,6 +57,28 @@ type GTUI struct {
 	// StartAtTarget opens gtui at the target of the calling shell's gardenctl
 	// session, if it has one.
 	StartAtTarget bool `json:"startAtTarget"`
+	// Theme names the color theme; empty means the default theme.
+	Theme string `json:"theme,omitempty"`
+	// Colors overrides single colors of the theme, keyed by green, yellow,
+	// red, grey, accent and selBg.
+	Colors map[string]Color `json:"colors,omitempty"`
+}
+
+// Color is a color for light and one for dark terminals. In YAML it is
+// either a string used for both ("#ff0000", "203") or {light: …, dark: …}.
+type Color struct {
+	Light string `json:"light,omitempty"`
+	Dark  string `json:"dark,omitempty"`
+}
+
+func (c *Color) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err == nil {
+		c.Light, c.Dark = s, s
+		return nil
+	}
+	type plain Color
+	return json.Unmarshal(b, (*plain)(c))
 }
 
 // Notification kinds for Notify.
