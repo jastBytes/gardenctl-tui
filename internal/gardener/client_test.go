@@ -5,14 +5,18 @@ package gardener
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 func shoot(ns, name, seed string, mutate ...func(*gardencorev1beta1.Shoot)) *gardencorev1beta1.Shoot {
@@ -202,5 +206,54 @@ func TestProjectFromNamespace(t *testing.T) {
 		if got := ProjectFromNamespace(in); got != want {
 			t.Errorf("%s: got %s", in, got)
 		}
+	}
+}
+
+func TestListShootsInChunks(t *testing.T) {
+	defer func(n int64) { listChunkSize = n }(listChunkSize)
+	listChunkSize = 2
+	var all []gardencorev1beta1.Shoot
+	for _, n := range []string{"s1", "s2", "s3", "s4", "s5"} {
+		all = append(all, *shoot("garden-a", n, "seed-1"))
+	}
+	for _, tc := range []struct {
+		name   string
+		expire bool
+		calls  []string // continue:limit of each list call
+	}{
+		{"pages", false, []string{"0:2", "2:2", "4:2"}},
+		{"expired continue token lists in one piece", true, []string{"0:2", "2:2", "0:0"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var calls []string
+			raw := fake.NewClientBuilder().WithScheme(Scheme()).WithInterceptorFuncs(interceptor.Funcs{
+				List: func(_ context.Context, _ client.WithWatch, l client.ObjectList, opts ...client.ListOption) error {
+					o := (&client.ListOptions{}).ApplyOptions(opts)
+					start, _ := strconv.Atoi(o.Continue)
+					calls = append(calls, fmt.Sprintf("%d:%d", start, o.Limit))
+					if tc.expire && o.Continue == "2" {
+						return apierrors.NewResourceExpired("continue token expired")
+					}
+					list := l.(*gardencorev1beta1.ShootList)
+					end := len(all)
+					if o.Limit > 0 && start+int(o.Limit) < end {
+						end = start + int(o.Limit)
+						list.Continue = strconv.Itoa(end)
+					}
+					list.Items = all[start:end]
+					return nil
+				},
+			}).Build()
+			shoots, err := New(raw).ListShoots(context.Background(), "garden-a")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := shootNames(shoots); strings.Join(got, ",") != "s1,s2,s3,s4,s5" {
+				t.Errorf("shoots = %v", got)
+			}
+			if strings.Join(calls, " ") != strings.Join(tc.calls, " ") {
+				t.Errorf("calls = %v, want %v", calls, tc.calls)
+			}
+		})
 	}
 }

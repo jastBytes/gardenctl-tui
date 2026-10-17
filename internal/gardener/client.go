@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/clientcmd"
@@ -17,6 +18,10 @@ import (
 
 	"github.com/jastbytes/gardenctl-tui/internal/config"
 )
+
+// listChunkSize is the page size for listing shoots, so that the API server
+// does not build one huge response for large landscapes (tests change it).
+var listChunkSize int64 = 500
 
 // SeedNameField is the shoot field used to select shoots by seed.
 const SeedNameField = "spec.seedName"
@@ -97,14 +102,28 @@ func (c *crClient) ListShootsOnSeed(ctx context.Context, seed string) ([]Shoot, 
 	return c.listShoots(ctx, client.MatchingFields{SeedNameField: seed})
 }
 
+// listShoots lists the shoots in pages of listChunkSize. If the continue
+// token expires in between, it lists once more in one piece (like client-go's
+// pager), as the pages would not be consistent.
 func (c *crClient) listShoots(ctx context.Context, opts ...client.ListOption) ([]Shoot, error) {
-	var list gardencorev1beta1.ShootList
-	if err := c.c.List(ctx, &list, opts...); err != nil {
-		return nil, fmt.Errorf("list shoots: %w", err)
-	}
-	out := make([]Shoot, 0, len(list.Items))
-	for i := range list.Items {
-		out = append(out, ShootFromAPI(&list.Items[i]))
+	var out []Shoot
+	limit, cont := listChunkSize, ""
+	for {
+		var list gardencorev1beta1.ShootList
+		err := c.c.List(ctx, &list, append(opts, client.Limit(limit), client.Continue(cont))...)
+		if err != nil && cont != "" && apierrors.IsResourceExpired(err) {
+			out, limit, cont = nil, 0, ""
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("list shoots: %w", err)
+		}
+		for i := range list.Items {
+			out = append(out, ShootFromAPI(&list.Items[i]))
+		}
+		if cont = list.Continue; cont == "" {
+			break
+		}
 	}
 	sortByNamespaceAndName(out)
 	return out, nil
