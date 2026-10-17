@@ -77,8 +77,8 @@ func (v *gotoView) render(width, height int) string {
 		styles.Dim.Render("gtui looks for it in all gardens and opens the shoot's details.")
 }
 
-// parseTechnicalID splits "shoot--<project>--<shoot>". Neither name may contain "--".
-func parseTechnicalID(id string) (project, shoot string, ok bool) {
+// ParseTechnicalID splits "shoot--<project>--<shoot>". Neither name may contain "--".
+func ParseTechnicalID(id string) (project, shoot string, ok bool) {
 	rest, ok := strings.CutPrefix(id, "shoot--")
 	if !ok {
 		return "", "", false
@@ -128,7 +128,7 @@ func findShoot(ctx context.Context, c gardener.Client, project, name, id string)
 // findTechnicalID searches all gardens in parallel for the shoot of id. If it
 // exists in several gardens, the first one of the configuration wins.
 func (a *App) findTechnicalID(id string) tea.Cmd {
-	project, name, ok := parseTechnicalID(id)
+	project, name, ok := ParseTechnicalID(id)
 	if !ok {
 		return setStatus(fmt.Sprintf("%q is not a technical ID (shoot--<project>--<name>)", id), true)
 	}

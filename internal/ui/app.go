@@ -71,6 +71,8 @@ type Options struct {
 	Notify func(title, body string)
 	// StartTarget is the shell's gardenctl target; gtui opens there (see startAtTarget).
 	StartTarget *session.Target
+	// StartShoot is a technical ID; gtui opens that shoot's details (wins over StartTarget).
+	StartShoot string
 }
 
 // App is the root model: navigation stack, status line and auto-refresh.
@@ -144,6 +146,10 @@ func New(opts Options) *App {
 	}
 	a.mon = newMonitor(a.newID())
 	a.stack = []view{newGardensView(a)}
+	if opts.StartShoot != "" {
+		// Init looks the shoot up; nothing else to restore.
+		return a
+	}
 	a.startRestore()
 	if t := opts.StartTarget; t != nil {
 		if loc := a.targetLocation(*t); loc != nil {
@@ -169,7 +175,11 @@ func (a *App) newID() int {
 func (a *App) top() view { return a.stack[len(a.stack)-1] }
 
 func (a *App) Init() tea.Cmd {
-	return tea.Batch(a.top().init(), a.spinner.Tick, a.scheduleTick(), a.checkVersion(), a.syncMonitor())
+	var find tea.Cmd
+	if id := a.opts.StartShoot; id != "" {
+		find = tea.Sequence(setStatus("looking for "+id+"…", false), a.findTechnicalID(id))
+	}
+	return tea.Batch(a.top().init(), a.spinner.Tick, a.scheduleTick(), a.checkVersion(), a.syncMonitor(), find)
 }
 
 func (a *App) scheduleTick() tea.Cmd {

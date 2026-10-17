@@ -22,9 +22,9 @@ func TestParseTechnicalID(t *testing.T) {
 		{"shoot--a--b--c", "", "", false},
 		{"alpha/api-gw", "", "", false},
 	} {
-		p, s, ok := parseTechnicalID(tc.id)
+		p, s, ok := ParseTechnicalID(tc.id)
 		if p != tc.project || s != tc.shoot || ok != tc.ok {
-			t.Errorf("parseTechnicalID(%q) = %q, %q, %v", tc.id, p, s, ok)
+			t.Errorf("ParseTechnicalID(%q) = %q, %q, %v", tc.id, p, s, ok)
 		}
 	}
 }
@@ -49,4 +49,15 @@ func TestGotoTechnicalIDNotFound(t *testing.T) {
 	waitFor(t, tm, "no shoot with technical ID shoot--beta--nope")
 	send(tm, "ctrl+g", "foo", "enter")
 	waitFor(t, tm, "is not a technical ID")
+}
+
+func TestStartShoot(t *testing.T) {
+	opts := testOptions(fake.Landscape())
+	opts.StartShoot = "shoot--alpha--web"
+	tm := startApp(t, opts)
+	waitFor(t, tm, "Technical ID")
+	app := quitAndSave(t, tm)
+	if got := titles(app); !reflect.DeepEqual(got, []string{"gardens", "dev", "alpha", "web"}) {
+		t.Fatalf("stack: %v", got)
+	}
 }

@@ -29,6 +29,7 @@ type options struct {
 	gardenctlConfig string
 	gtuiConfig      string
 	garden          string
+	shoot           string
 	dump            bool
 	demo            bool
 	version         bool
@@ -47,6 +48,7 @@ func parseFlags(args []string) (*options, error) {
 	fs.StringVar(&o.gardenctlConfig, "config", "", "gardenctl config file (default $GCTL_HOME/gardenctl-v2.yaml or ~/.garden/gardenctl-v2.yaml)")
 	fs.StringVar(&o.gtuiConfig, "gtui-config", "", "gtui config file (default ~/.garden/gtui.yaml)")
 	fs.StringVar(&o.garden, "garden", "", "only show this garden (identity or alias)")
+	fs.StringVar(&o.shoot, "shoot", "", "open the shoot with this technical ID (shoot--<project>--<name>)")
 	fs.BoolVar(&o.dump, "dump", false, "print gardens, projects and shoots as text and exit")
 	fs.BoolVar(&o.demo, "demo", false, "use a built-in fake landscape (no cluster access)")
 	fs.BoolVar(&o.version, "version", false, "print the version and exit")
@@ -55,6 +57,9 @@ func parseFlags(args []string) (*options, error) {
 	}
 	if fs.NArg() > 0 {
 		return nil, fmt.Errorf("unexpected arguments: %v", fs.Args())
+	}
+	if _, _, ok := ui.ParseTechnicalID(o.shoot); o.shoot != "" && !ok {
+		return nil, fmt.Errorf("--shoot %q is not a technical ID (shoot--<project>--<name>)", o.shoot)
 	}
 	return o, nil
 }
@@ -107,7 +112,7 @@ func run(args []string) error {
 	}()
 
 	var start *session.Target
-	if gtuiCfg.StartAtTarget && !o.demo {
+	if gtuiCfg.StartAtTarget && !o.demo && o.shoot == "" {
 		start = shellTarget(sessions)
 	}
 
@@ -118,6 +123,7 @@ func run(args []string) error {
 		Sessions:    sessions,
 		State:       store,
 		StartTarget: start,
+		StartShoot:  o.shoot,
 	})
 	// No signal context here: a Ctrl+C inside a launched tool must not quit gtui.
 	// Bubble Tea handles signals itself and ignores them while a tool runs.
