@@ -50,6 +50,7 @@ go install github.com/jastbytes/gardenctl-tui/cmd/gtui@latest
 ```sh
 gtui                 # all gardens from the gardenctl config
 gtui --garden dev    # start with one garden (identity or alias)
+gtui --shoot shoot--myproject--myshoot  # open a shoot by its technical ID
 gtui --dump          # print gardens, projects and shoots as text
 gtui --demo          # built-in fake landscape, no cluster access needed
 gtui --demo --theme dracula   # try a color theme
@@ -77,6 +78,7 @@ Flags: `--config` (gardenctl config file), `--gtui-config` (gtui config file),
 | `y` | copy the name, path, `gardenctl target` command or technical ID |
 | `v` | the shoot's YAML manifest (`y` there copies it) |
 | `ctrl+r` | favorites (with live status) and recent targets |
+| `ctrl+g` | go to a shoot by its technical ID (`shoot--<project>--<name>`), searched in all gardens |
 | `p` | toggle provider-env (cloud provider CLI credentials) for launched tools |
 | `w` | toggle where tools start: this terminal or a new terminal window |
 | `r` | refresh, `a` toggles auto-refresh |
@@ -183,7 +185,7 @@ tools:
   the shoot list of a targeted project or seed, or the projects of a targeted
   garden. This wins over `rememberLocation`. Without a target, or if gardenctl
   cannot tell (no `GCTL_SESSION_ID` or `TERM_SESSION_ID`), gtui starts as
-  usual.
+  usual. `--shoot <technical ID>` wins over both.
 - With `rememberLocation: true`, gtui saves where you were when you quit
   (garden, project or seed, shoot list or shoot details, and the selected row)
   and opens that view again on the next start. If an item no longer exists,

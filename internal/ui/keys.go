@@ -41,6 +41,7 @@ func (a *App) helpGroups() []helpGroup {
 		binding("y", "copy name, path, …"),
 		binding("v", "shoot YAML"),
 		binding("ctrl+r", "favorites & recent"),
+		binding("ctrl+g", "go to technical ID"),
 		binding("p", "toggle provider-env"),
 		binding("w", "toggle new window"),
 		binding("r", "refresh"),
