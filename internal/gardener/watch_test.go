@@ -136,9 +136,11 @@ func TestWatchShootsForbidden(t *testing.T) {
 
 func TestWatchShootsResyncAndRetry(t *testing.T) {
 	var watches, lists atomic.Int32
+	versions := make(chan string, 10) // resourceVersion of each list
 	raw := fake.NewClientBuilder().WithScheme(Scheme()).WithObjects(shoot("garden-a", "s1", "seed-1")).
 		WithInterceptorFuncs(interceptor.Funcs{
 			List: func(ctx context.Context, c client.WithWatch, l client.ObjectList, opts ...client.ListOption) error {
+				versions <- (&client.ListOptions{}).ApplyOptions(opts).AsListOptions().ResourceVersion
 				if lists.Add(1) == 3 {
 					return errors.New("connection refused")
 				}
@@ -160,5 +162,11 @@ func TestWatchShootsResyncAndRetry(t *testing.T) {
 	}
 	if u := next(t, updates); u.err != nil || len(u.shoots) != 1 {
 		t.Fatalf("list 4 after backoff: %+v", u)
+	}
+	// From the watch cache, except right after an expired watch.
+	for i, want := range []string{"0", "", "", "0"} {
+		if got := <-versions; got != want {
+			t.Errorf("list %d: resourceVersion = %q, want %q", i+1, got, want)
+		}
 	}
 }

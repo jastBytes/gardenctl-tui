@@ -72,8 +72,9 @@ func (c *crClient) WatchShoots(ctx context.Context, scope ShootScope, opts Watch
 		opts.MaxBackoff = 30 * time.Second
 	}
 	backoff := time.Second
+	fromCache := true
 	for {
-		listed, err := c.watchShoots(ctx, scope, opts.Throttle, emit)
+		listed, err := c.watchShoots(ctx, scope, fromCache, opts.Throttle, emit)
 		if ctx.Err() != nil {
 			return nil
 		}
@@ -83,7 +84,10 @@ func (c *crClient) WatchShoots(ctx context.Context, scope ShootScope, opts Watch
 		if listed {
 			backoff = time.Second
 		}
-		if errors.Is(err, errResync) {
+		// After an expired watch, the cache may be older than the expired
+		// version; list consistently then (like client-go's reflector).
+		fromCache = !errors.Is(err, errResync)
+		if !fromCache {
 			continue
 		}
 		emit(nil, err)
@@ -97,9 +101,16 @@ func (c *crClient) WatchShoots(ctx context.Context, scope ShootScope, opts Watch
 }
 
 // watchShoots runs one list+watch cycle. It reports whether the list succeeded.
-func (c *crClient) watchShoots(ctx context.Context, scope ShootScope, throttle time.Duration, emit func([]Shoot, error)) (bool, error) {
+// fromCache lists with resourceVersion "0", which the API server answers from
+// its watch cache instead of etcd; the watch catches up on anything newer.
+func (c *crClient) watchShoots(ctx context.Context, scope ShootScope, fromCache bool, throttle time.Duration,
+	emit func([]Shoot, error)) (bool, error) {
+	opts := scope.listOptions()
+	if fromCache {
+		opts = append(opts, &client.ListOptions{Raw: &metav1.ListOptions{ResourceVersion: "0"}})
+	}
 	var list gardencorev1beta1.ShootList
-	if err := c.c.List(ctx, &list, scope.listOptions()...); err != nil {
+	if err := c.c.List(ctx, &list, opts...); err != nil {
 		return false, fmt.Errorf("list shoots: %w", err)
 	}
 	items := map[string]Shoot{}
