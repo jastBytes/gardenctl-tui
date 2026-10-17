@@ -53,10 +53,11 @@ gtui --garden dev    # start with one garden (identity or alias)
 gtui --shoot shoot--myproject--myshoot  # open a shoot by its technical ID
 gtui --dump          # print gardens, projects and shoots as text
 gtui --demo          # built-in fake landscape, no cluster access needed
+gtui --demo --theme dracula   # try a color theme
 ```
 
 Flags: `--config` (gardenctl config file), `--gtui-config` (gtui config file),
-`--version`.
+`--theme` (color theme, overrides `gtui.yaml`), `--version`.
 
 ### Keys
 
@@ -144,6 +145,8 @@ terminal: []             # command that opens a window, e.g. [tmux, new-window]
 gardenctl: gardenctl     # gardenctl binary
 rememberLocation: false  # reopen the view gtui was quit in
 startAtTarget: true      # open at the shell's gardenctl target
+theme: default           # color theme, see "Themes"
+colors: {}               # override single colors of the theme
 tools:
   - key: "s"
     name: "Shell"
@@ -188,6 +191,37 @@ tools:
   and opens that view again on the next start. If an item no longer exists,
   gtui stops at the last level it can open. Pressing a key while it is still
   restoring stops the restoring.
+
+### Themes
+
+`theme` picks the colors. Built in, each with a light and a dark variant
+that gtui picks to match the terminal's background:
+
+| theme        | palette                                   |
+|--------------|-------------------------------------------|
+| `default`    | GitHub Primer                             |
+| `catppuccin` | Catppuccin Latte / Mocha                  |
+| `dracula`    | Dracula Alucard / Dracula                 |
+| `gruvbox`    | Gruvbox light / dark                      |
+| `rose-pine`  | Rosé Pine Dawn / Main                     |
+| `solarized`  | Solarized light / dark                    |
+| `tokyonight` | Tokyo Night Day / Night                   |
+| `mono`       | no colors, like `NO_COLOR`                |
+
+`colors` overrides single colors of the theme: `green` (healthy), `yellow`
+(progressing, warnings), `red` (errors), `grey` (hibernated, secondary text),
+`accent` (logo, cursor, sections, borders) and `selBg` (background of selected
+rows). A color is a hex color (`#rgb`, `#rrggbb`) or an ANSI color number
+(`0`–`255`), either one for both backgrounds or one per background:
+
+```yaml
+theme: dracula
+colors:
+  accent: "#ff79c6"
+  selBg: {light: "#e6e6f0", dark: "236"}
+```
+
+`gtui --demo --theme <name>` shows a theme without cluster access.
 
 ### Same terminal or new window
 
