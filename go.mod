@@ -11,7 +11,7 @@ require (
 	github.com/charmbracelet/x/ansi v0.11.9
 	github.com/charmbracelet/x/exp/golden v0.1.0
 	github.com/charmbracelet/x/exp/teatest v0.0.0-20261012121918-43427fdbad12
-	github.com/gardener/gardener/pkg/apis v1.153.0
+	github.com/gardener/gardener/pkg/apis v1.153.1
 	github.com/google/uuid v1.6.0
 	github.com/muesli/termenv v0.16.0
 	github.com/sahilm/fuzzy v0.1.3
